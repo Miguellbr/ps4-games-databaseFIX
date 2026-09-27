@@ -86,7 +86,7 @@ let filteredGames = [];
 let renderedCount = 0;
 let currentMode = 'all';
 const BATCH_SIZE = 80;
-const DB_CACHE_NAME = 'ps4db-index-v3';
+const DB_CACHE_NAME = 'ps4db-index-v4';
 const DB_CACHE_VERSION = 1;
 let dbCachePromise = null;
 
@@ -334,14 +334,17 @@ function createGameCard(game) {
 
 function normalizeSearchText(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ');}
 function levenshtein(a,b){if(a===b)return 0;if(!a)return b.length;if(!b)return a.length;let p=Array.from({length:b.length+1},(_,i)=>i);for(let i=0;i<a.length;i++){const q=[i+1];for(let j=0;j<b.length;j++)q.push(Math.min(q[j]+1,p[j+1]+1,p[j]+(a[i]===b[j]?0:1)));p=q;}return p[b.length];}
-function searchScore(game,query){const q=normalizeSearchText(query);if(!q)return 1;const name=normalizeSearchText(game.name),title=normalizeSearchText(game.title_id),region=normalizeSearchText(game.region),version=normalizeSearchText(game.version),page=normalizeSearchText(game.page_url),fields=[name,title,region,version,page],tokens=q.split(' ').filter(Boolean),nt=name.split(' ').filter(Boolean);let score=0;
-if(name===q)return 2000;
-if(name.includes(q))score+=1200;
-if(title===q||title.includes(q))score+=900;
+function searchScore(game,query){const q=normalizeSearchText(query);if(!q)return 1;const name=normalizeSearchText(game.name),title=normalizeSearchText(game.title_id),tokens=q.split(' ').filter(Boolean),nt=name.split(' ').filter(Boolean);let score=0;
+if(!name)return 0;
+if(name===q)return 5000;
+if(name.startsWith(q))score+=3000;
+if(name.includes(q))score+=2200;
+if(title===q||title.includes(q))score+=1800;
 const allNameTokens=tokens.length>1&&tokens.every(t=>nt.some(n=>n===t||n.includes(t)));
-if(allNameTokens)score+=800;
-if(tokens.length===1&&q.length>=3&&nt.some(n=>n.startsWith(q)))score+=500;
-if(score>0){if(region.includes(q)||version.includes(q))score+=80;return score;}
+if(allNameTokens)score+=1600;
+if(tokens.length>1&&tokens.every(t=>name.includes(t)))score+=1200;
+if(tokens.length===1&&q.length>=2&&nt.some(n=>n.startsWith(q)))score+=700;
+if(score>0)return score;
 if(tokens.length===1&&q.length>=4){const t=tokens[0];if(nt.some(n=>levenshtein(t,n)<=Math.max(1,Math.floor(t.length/5))))return 250;}
 return 0;}
 function applyFilters(){const rawQ=(document.getElementById('searchInput').value||'').trim(),type=document.getElementById('typeFilter').value,min=document.getElementById('linksFilter').value,region=document.getElementById('regionFilter').value,firmware=document.getElementById('firmwareFilter')?.value||'all',version=document.getElementById('versionFilter')?.value||'all',idx=activeSource.startsWith('lib:')?Number(activeSource.slice(4)):-1;filteredGames=allGames.filter(g=>{const mq=!rawQ||searchScore(g,rawQ)>0,mt=type==='all'||gameType(g)===type,links=Number(g.total_links||0),ml=min==='all'||(min==='0'?links===0:links>=Number(min)),mr=region==='all'||g.region===region,ms=activeSource==='all'||g._source===activeSource||(idx>=0&&g._source===importedLibraries[idx]?.name),fw=parseFloat(String(g.min_fw||'').replace(/[^0-9.]/g,'')),mf=firmware==='all'||(firmware==='9'&&fw>0&&fw<=9)||(firmware==='11'&&fw>9&&fw<=11)||(firmware==='12'&&fw>11&&fw<=12)||(firmware==='higher'&&fw>12),mv=version==='all'||!!String(g.version||'').trim(),ma=!activeLetter||String(g.name||'').trim().toUpperCase().startsWith(activeLetter);return mq&&mt&&ml&&mr&&ms&&mf&&mv&&ma;});if(rawQ){filteredGames.sort((a,b)=>searchScore(b,rawQ)-searchScore(a,rawQ));saveSearch(rawQ);}renderedCount=0;renderBatch(0);}
