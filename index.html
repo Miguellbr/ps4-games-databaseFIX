@@ -430,7 +430,7 @@ const getHistory = () => JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
 
 async function loadGames() {
   try {
-    const response = await fetch('./ps4_games_expanded.json', { cache:'no-cache' });
+    const response = await fetch('./ps4_games_expanded.json', { cache:'default' });
     if (!response.ok) throw new Error('HTTP ' + response.status);
     const main = await response.json();
     allGames = main.map(normalizeMainGame);
