@@ -265,7 +265,46 @@
             .game-title { font-size: 16px; }
             .download-btn { padding: 6px 12px; font-size: 12px; }
         }
-    </style>
+    
+        .toolbar { display:flex; flex-wrap:wrap; gap:10px; margin-top:18px; }
+        .tool-btn, .filter-select { border:1px solid #003791; background:white; color:#003791; padding:10px 14px; border-radius:10px; font-weight:600; cursor:pointer; }
+        .tool-btn.active { background:#003791; color:white; }
+        .filter-panel { display:none; margin-top:15px; padding:15px; background:#fff; border:1px solid #ddd; border-radius:12px; gap:10px; flex-wrap:wrap; }
+        .filter-panel.show { display:flex; }
+        .filter-panel input, .filter-panel select { padding:10px; border:1px solid #ccc; border-radius:8px; }
+        .alpha-nav { display:flex; flex-wrap:wrap; gap:6px; padding:15px 30px; background:#fff; border-bottom:1px solid #eee; }
+        .alpha-nav button { border:0; background:#eef3ff; color:#003791; border-radius:7px; padding:7px 10px; cursor:pointer; font-weight:600; }
+        .alpha-nav button:hover { background:#003791; color:white; }
+        .game-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+        .favorite-btn { border:0; background:#fff3cd; color:#8a6500; padding:7px 10px; border-radius:7px; cursor:pointer; }
+        .favorite-btn.saved { background:#003791; color:white; }
+        .game-item.hidden { display:none; }
+        .empty-state { text-align:center; padding:60px 20px; color:#666; }
+        .modal { position:fixed; inset:0; background:rgba(0,0,0,.65); display:none; align-items:center; justify-content:center; padding:20px; z-index:1000; }
+        .modal.show { display:flex; }
+        .modal-card { background:white; color:#222; width:min(700px,100%); max-height:90vh; overflow:auto; border-radius:16px; padding:24px; position:relative; }
+        .modal-close { position:absolute; right:15px; top:12px; border:0; background:#eee; border-radius:50%; width:36px; height:36px; cursor:pointer; font-size:20px; }
+        .detail-title { color:#003791; margin:0 45px 15px 0; }
+        .detail-row { padding:10px 0; border-bottom:1px solid #eee; word-break:break-word; }
+        body.dark { background:#10131a; }
+        body.dark .container, body.dark .modal-card, body.dark .alpha-nav { background:#171b24; color:#eee; }
+        body.dark .search-container { background:#202631; border-color:#303846; }
+        body.dark #searchInput, body.dark .tool-btn, body.dark .filter-select, body.dark .filter-panel input, body.dark .filter-panel select { background:#11151d; color:#eee; border-color:#52627a; }
+        body.dark .game-item { background:#202631; }
+        body.dark .game-title, body.dark .letter-header { color:#69a8ff; }
+        body.dark .alpha-nav button { background:#252e3c; color:#9fc4ff; }
+        body.dark footer { background:#202631; color:#bbb; border-color:#303846; }
+        body.dark .favorite-btn { background:#403816; color:#ffe082; }
+        @media(max-width:768px) {
+            body { padding:8px; }
+            header { padding:25px 15px; }
+            .search-container { padding:15px; }
+            .games-container { padding:15px; }
+            .alpha-nav { padding:10px 15px; }
+            .tool-btn, .filter-select { flex:1; min-width:120px; }
+        }
+
+</style>
 </head>
 <body>
     <div class="container">
@@ -290,8 +329,30 @@
         <div class="search-container">
             <input type="text" id="searchInput" placeholder="🔍 Search for games... (e.g., 'Batman', 'Final Fantasy', 'Call of Duty')" onkeyup="searchGames()">
             <div class="search-info" id="searchInfo">Loading games database...</div>
+            <div class="toolbar">
+                <button class="tool-btn" onclick="toggleFilters()">⚙️ Filtros</button>
+                <button class="tool-btn" onclick="showFavorites()">⭐ Favoritos</button>
+                <button class="tool-btn" onclick="showHistory()">🕘 Histórico</button>
+                <button class="tool-btn" onclick="toggleTheme()">🌙 Tema</button>
+                <button class="tool-btn" onclick="resetView()">↺ Limpar</button>
+            </div>
+            <div class="filter-panel" id="filterPanel">
+                <select id="typeFilter" onchange="applyFilters()">
+                    <option value="all">Todos</option>
+                    <option value="game">Jogos</option>
+                    <option value="dlc">DLC</option>
+                    <option value="update">Updates</option>
+                </select>
+                <select id="linksFilter" onchange="applyFilters()">
+                    <option value="all">Qualquer quantidade de links</option>
+                    <option value="0">Sem links</option>
+                    <option value="1">1+ links</option>
+                    <option value="3">3+ links</option>
+                </select>
+            </div>
         </div>
         
+        <div class="alpha-nav" id="alphaNav"></div>
         <div class="games-container" id="gamesContainer">
             <div class="loading">Loading 17,065 games with download links...</div>
         </div>
@@ -306,119 +367,169 @@
     <div class="scroll-top" id="scrollTop" onclick="scrollToTop()">↑</div>
     
     <script>
-        let allGames = [];
-        let filteredGames = [];
-        const BATCH_SIZE = 100;
-        let renderedCount = 0;
+let allGames = [];
+let filteredGames = [];
+let renderedCount = 0;
+let currentMode = 'all';
+const BATCH_SIZE = 80;
+const FAVORITES_KEY = 'ps4db_favorites';
+const HISTORY_KEY = 'ps4db_history';
 
-        async function loadGames() {
-            try {
-                const response = await fetch('./ps4_games_expanded.json', { cache: 'no-cache' });
-                if (!response.ok) throw new Error('HTTP ' + response.status);
-                allGames = await response.json();
-                filteredGames = allGames;
-                document.getElementById('searchInfo').textContent =
-                    `Loaded ${allGames.length.toLocaleString()} games`;
-                renderBatch();
-            } catch (error) {
-                document.getElementById('gamesContainer').innerHTML =
-                    '<div class="loading">Error loading games database. Please refresh the page.</div>';
-                console.error('Error loading games:', error);
-            }
-        }
+const getFavorites = () => JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]');
+const saveFavorites = v => localStorage.setItem(FAVORITES_KEY, JSON.stringify(v));
+const getHistory = () => JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
 
-        function renderBatch() {
-            const container = document.getElementById('gamesContainer');
-            if (renderedCount === 0) container.innerHTML = '';
+async function loadGames() {
+  try {
+    const response = await fetch('./ps4_games_expanded.json', { cache:'no-cache' });
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    allGames = await response.json();
+    filteredGames = allGames;
+    buildAlphaNav();
+    updateStats();
+    renderBatch();
+  } catch (error) {
+    document.getElementById('gamesContainer').innerHTML =
+      '<div class="empty-state">Erro ao carregar o banco de dados. Recarregue a página.</div>';
+    console.error(error);
+  }
+}
 
-            const end = Math.min(renderedCount + BATCH_SIZE, filteredGames.length);
-            const fragment = document.createDocumentFragment();
+function gameType(game) {
+  const n=(game.name||'').toLowerCase();
+  if (/\b(dlc|add[- ]?on|expansion|season pass|bonus)\b/.test(n)) return 'dlc';
+  if (/\b(update|patch|title update|upd)\b/.test(n)) return 'update';
+  return 'game';
+}
 
-            for (let i = renderedCount; i < end; i++) {
-                const game = filteredGames[i];
-                const gameDiv = document.createElement('div');
-                gameDiv.className = 'game-item';
+function updateStats() {
+  const links=allGames.reduce((n,g)=>n+Number(g.total_links||0),0);
+  document.getElementById('totalGames').textContent=allGames.length.toLocaleString();
+  document.getElementById('totalLinks').textContent=links.toLocaleString();
+}
 
-                const title = document.createElement('div');
-                title.className = 'game-title';
-                title.textContent = game.name;
-                gameDiv.appendChild(title);
+function buildAlphaNav() {
+  const nav=document.getElementById('alphaNav'); nav.innerHTML='';
+  ['#',...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'].forEach(letter=>{
+    const b=document.createElement('button'); b.textContent=letter;
+    b.onclick=()=>jumpToLetter(letter); nav.appendChild(b);
+  });
+}
+function jumpToLetter(letter) {
+  const game=filteredGames.find(g=>((g.name||'').charAt(0).toUpperCase()===letter)|| (letter==='#' && !/[A-Z]/.test((g.name||'').charAt(0).toUpperCase())));
+  if(game) {
+    const index=filteredGames.indexOf(game); renderedCount=0; renderBatch(index);
+  }
+}
 
-                const linksDiv = document.createElement('div');
-                linksDiv.className = 'download-links';
+function renderBatch(start=renderedCount) {
+  const container=document.getElementById('gamesContainer');
+  if(start===0) container.innerHTML='';
+  renderedCount=start;
+  const end=Math.min(renderedCount+BATCH_SIZE, filteredGames.length);
+  const fragment=document.createDocumentFragment();
+  for(let i=renderedCount;i<end;i++) fragment.appendChild(createGameCard(filteredGames[i]));
+  container.appendChild(fragment);
+  renderedCount=end;
+  document.getElementById('searchInfo').textContent =
+    `Showing ${renderedCount.toLocaleString()} of ${filteredGames.length.toLocaleString()} games`;
+  if(renderedCount<filteredGames.length) setTimeout(()=>renderBatch(),0);
+}
 
-                const addLinks = (links, className, label) => {
-                    (links || []).forEach((link, index) => {
-                        const btn = document.createElement('a');
-                        btn.href = `redirect-optimized.html?url=${encodeURIComponent(link)}&game=${encodeURIComponent(game.name)}`;
-                        btn.className = 'download-btn ' + className;
-                        btn.textContent = `${label} ${index + 1}`;
-                        btn.target = '_blank';
-                        linksDiv.appendChild(btn);
-                    });
-                };
+function createGameCard(game) {
+  const div=document.createElement('div'); div.className='game-item';
+  const title=document.createElement('div'); title.className='game-title'; title.textContent=game.name;
+  div.appendChild(title);
+  const links=document.createElement('div'); links.className='download-links';
+  const add=(arr,cls,label)=>(arr||[]).forEach((link,i)=>{
+    const a=document.createElement('a');
+    a.href=`redirect-optimized.html?url=${encodeURIComponent(link)}&game=${encodeURIComponent(game.name)}`;
+    a.className='download-btn '+cls; a.textContent=`${label} ${i+1}`; a.target='_blank';
+    links.appendChild(a);
+  });
+  add(game.download_links?.mediafire,'btn-mediafire','Mediafire');
+  add(game.download_links?.['1file'],'btn-1file','1File');
+  add(game.download_links?.other,'btn-other','Mirror');
+  const page=document.createElement('a'); page.href=game.page_url||'#'; page.className='download-btn btn-page';
+  page.textContent='Ver página'; page.target='_blank'; links.appendChild(page);
+  div.appendChild(links);
 
-                addLinks(game.download_links?.mediafire, 'btn-mediafire', 'Mediafire');
-                addLinks(game.download_links?.['1file'], 'btn-1file', '1File');
-                addLinks(game.download_links?.other, 'btn-other', 'Mirror');
+  const actions=document.createElement('div'); actions.className='game-actions';
+  const fav=document.createElement('button'); fav.className='favorite-btn '+(getFavorites().includes(game.name)?'saved':'');
+  fav.textContent=getFavorites().includes(game.name)?'⭐ Salvo':'☆ Favoritar';
+  fav.onclick=()=>toggleFavorite(game.name,fav);
+  const details=document.createElement('button'); details.className='tool-btn'; details.textContent='ℹ️ Detalhes';
+  details.onclick=()=>showDetails(game);
+  actions.append(fav,details); div.appendChild(actions);
 
-                const pageBtn = document.createElement('a');
-                pageBtn.href = game.page_url;
-                pageBtn.className = 'download-btn btn-page';
-                pageBtn.textContent = 'View Page';
-                pageBtn.target = '_blank';
-                linksDiv.appendChild(pageBtn);
+  const count=document.createElement('div'); count.className='link-count';
+  count.textContent=`${game.total_links||0} download links • ${gameType(game).toUpperCase()}`;
+  div.appendChild(count);
+  return div;
+}
 
-                gameDiv.appendChild(linksDiv);
+function applyFilters() {
+  const q=(document.getElementById('searchInput').value||'').trim().toUpperCase();
+  const type=document.getElementById('typeFilter').value;
+  const min=document.getElementById('linksFilter').value;
+  filteredGames=allGames.filter(g=>{
+    const matchesQ=!q||(g.name||'').toUpperCase().includes(q);
+    const matchesType=type==='all'||gameType(g)===type;
+    const links=Number(g.total_links||0);
+    const matchesLinks=min==='all'||(min==='0'?links===0:links>=Number(min));
+    return matchesQ&&matchesType&&matchesLinks;
+  });
+  renderedCount=0; renderBatch(); 
+}
+function searchGames(){ applyFilters(); }
 
-                const linkCount = document.createElement('div');
-                linkCount.className = 'link-count';
-                linkCount.textContent = `${game.total_links || 0} download links available`;
-                gameDiv.appendChild(linkCount);
+function toggleFilters(){ document.getElementById('filterPanel').classList.toggle('show'); }
+function toggleFavorite(name,button) {
+  let f=getFavorites(); const i=f.indexOf(name);
+  if(i>=0) f.splice(i,1); else f.push(name);
+  saveFavorites(f); button.classList.toggle('saved',f.includes(name));
+  button.textContent=f.includes(name)?'⭐ Salvo':'☆ Favoritar';
+}
+function showFavorites(){
+  const f=getFavorites(); currentMode='favorites';
+  filteredGames=allGames.filter(g=>f.includes(g.name)); renderedCount=0; renderBatch();
+  document.getElementById('searchInfo').textContent=`⭐ ${filteredGames.length} favoritos`;
+}
+function showHistory(){
+  const h=getHistory(); alert(h.length ? 'Últimas pesquisas:\n\n'+h.join('\n') : 'Nenhuma pesquisa salva ainda.');
+}
+function saveSearch(q){
+  if(!q)return; let h=getHistory().filter(x=>x!==q); h.unshift(q); localStorage.setItem(HISTORY_KEY,JSON.stringify(h.slice(0,15)));
+}
+function resetView(){
+  document.getElementById('searchInput').value='';
+  document.getElementById('typeFilter').value='all'; document.getElementById('linksFilter').value='all';
+  currentMode='all'; filteredGames=allGames; renderedCount=0; renderBatch();
+}
+function showDetails(game){
+  document.getElementById('detailTitle').textContent=game.name||'Jogo';
+  const links=[...(game.download_links?.mediafire||[]),...(game.download_links?.['1file']||[]),...(game.download_links?.other||[])];
+  document.getElementById('detailBody').innerHTML=
+    `<div class="detail-row"><b>Tipo:</b> ${gameType(game).toUpperCase()}</div>
+     <div class="detail-row"><b>Links:</b> ${links.length}</div>
+     <div class="detail-row"><b>Página:</b> ${game.page_url||'—'}</div>
+     <div class="detail-row"><b>MediaFire:</b> ${(game.download_links?.mediafire||[]).length}</div>
+     <div class="detail-row"><b>1File:</b> ${(game.download_links?.['1file']||[]).length}</div>
+     <div class="detail-row"><b>Outros:</b> ${(game.download_links?.other||[]).length}</div>`;
+  document.getElementById('detailModal').classList.add('show');
+}
+function closeDetails(e){ if(!e||e.target===document.getElementById('detailModal')) document.getElementById('detailModal').classList.remove('show'); }
+function toggleTheme(){
+  document.body.classList.toggle('dark');
+  localStorage.setItem('ps4db_dark',document.body.classList.contains('dark')?'1':'0');
+}
+if(localStorage.getItem('ps4db_dark')==='1') document.body.classList.add('dark');
 
-                fragment.appendChild(gameDiv);
-            }
-
-            container.appendChild(fragment);
-            renderedCount = end;
-            document.getElementById('searchInfo').textContent =
-                `Showing ${renderedCount.toLocaleString()} of ${filteredGames.length.toLocaleString()} games`;
-
-            if (renderedCount < filteredGames.length) {
-                setTimeout(renderBatch, 0);
-            }
-        }
-
-        function searchGames() {
-            const input = document.getElementById('searchInput');
-            const filter = input.value.trim().toUpperCase();
-
-            if (!filter) {
-                filteredGames = allGames;
-            } else {
-                filteredGames = allGames.filter(game =>
-                    (game.name || '').toUpperCase().includes(filter)
-                );
-            }
-
-            renderedCount = 0;
-            renderBatch();
-        }
-
-        const scrollBtn = document.getElementById('scrollTop');
-        const gamesContainer = document.getElementById('gamesContainer');
-
-        gamesContainer.addEventListener('scroll', () => {
-            if (gamesContainer.scrollTop > 300) scrollBtn.classList.add('show');
-            else scrollBtn.classList.remove('show');
-        });
-
-        function scrollToTop() {
-            gamesContainer.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        loadGames();
-    </script>
+document.getElementById('searchInput').addEventListener('keyup',()=>saveSearch(document.getElementById('searchInput').value.trim()));
+const gamesContainer=document.getElementById('gamesContainer'), scrollBtn=document.getElementById('scrollTop');
+gamesContainer.addEventListener('scroll',()=>scrollBtn.classList.toggle('show',gamesContainer.scrollTop>300));
+function scrollToTop(){gamesContainer.scrollTo({top:0,behavior:'smooth'});}
+loadGames();
+</script>
 </body>
 </html>
-
