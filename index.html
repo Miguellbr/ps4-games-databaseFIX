@@ -7,311 +7,19 @@
     <meta name="keywords" content="PS4 games, PS4 PKG, PS4 download, free PS4 games, jailbroken PS4, Mediafire, 1File">
     <title>PS4 Games Database - 17,065+ Games with Download Links</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            overflow: hidden;
-        }
-        
-        header {
-            background: linear-gradient(135deg, #003791 0%, #0066cc 100%);
-            color: white;
-            padding: 40px;
-            text-align: center;
-        }
-        
-        h1 {
-            font-size: 3em;
-            margin-bottom: 15px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
-        }
-        
-        .stats {
-            background: rgba(255,255,255,0.1);
-            padding: 20px;
-            border-radius: 10px;
-            margin-top: 20px;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-        }
-        
-        .stat-item {
-            text-align: center;
-        }
-        
-        .stat-number {
-            font-size: 2em;
-            font-weight: bold;
-            display: block;
-        }
-        
-        .stat-label {
-            font-size: 0.9em;
-            opacity: 0.9;
-            margin-top: 5px;
-        }
-        
-        .search-container {
-            padding: 30px;
-            background: #f8f9fa;
-            border-bottom: 2px solid #e9ecef;
-        }
-        
-        #searchInput {
-            width: 100%;
-            padding: 18px 25px;
-            font-size: 18px;
-            border: 2px solid #003791;
-            border-radius: 50px;
-            outline: none;
-            transition: all 0.3s;
-        }
-        
-        #searchInput:focus {
-            border-color: #0066cc;
-            box-shadow: 0 0 0 4px rgba(0, 55, 145, 0.1);
-        }
-        
-        .search-info {
-            margin-top: 15px;
-            text-align: center;
-            color: #666;
-            font-size: 14px;
-        }
-        
-        .games-container {
-            padding: 30px;
-            max-height: 700px;
-            overflow-y: auto;
-        }
-        
-        .letter-section {
-            margin-bottom: 30px;
-        }
-        
-        .letter-header {
-            font-size: 2.5em;
-            font-weight: bold;
-            color: #003791;
-            padding: 15px 0;
-            border-bottom: 4px solid #003791;
-            margin-bottom: 20px;
-            position: sticky;
-            top: 0;
-            background: white;
-            z-index: 10;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-        
-        .game-item {
-            padding: 20px;
-            margin: 10px 0;
-            border-radius: 10px;
-            transition: all 0.2s;
-            border-left: 5px solid transparent;
-            background: #f8f9fa;
-        }
-        
-        .game-item:hover {
-            background: #e3f2fd;
-            border-left-color: #003791;
-            transform: translateX(8px);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        
-        .game-title {
-            font-size: 18px;
-            font-weight: 600;
-            color: #003791;
-            margin-bottom: 10px;
-        }
-        
-        .download-links {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 10px;
-        }
-        
-        .download-btn {
-            padding: 8px 16px;
-            border-radius: 5px;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.2s;
-            display: inline-block;
-        }
-        
-        .btn-mediafire {
-            background: #1e88e5;
-            color: white;
-        }
-        
-        .btn-mediafire:hover {
-            background: #1565c0;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(30, 136, 229, 0.3);
-        }
-        
-        .btn-1file {
-            background: #43a047;
-            color: white;
-        }
-        
-        .btn-1file:hover {
-            background: #2e7d32;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(67, 160, 71, 0.3);
-        }
-        
-        .btn-other {
-            background: #fb8c00;
-            color: white;
-        }
-        
-        .btn-other:hover {
-            background: #e65100;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(251, 140, 0, 0.3);
-        }
-        
-        .btn-page {
-            background: #6c757d;
-            color: white;
-        }
-        
-        .btn-page:hover {
-            background: #495057;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(108, 117, 125, 0.3);
-        }
-        
-        .link-count {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
-        }
-        
-        footer {
-            background: #f8f9fa;
-            padding: 25px;
-            text-align: center;
-            color: #666;
-            border-top: 2px solid #e9ecef;
-        }
-        
-        footer a {
-            color: #003791;
-            text-decoration: none;
-            font-weight: 500;
-        }
-        
-        footer a:hover {
-            text-decoration: underline;
-        }
-        
-        .scroll-top {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            background: #003791;
-            color: white;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            transition: all 0.3s;
-            font-size: 24px;
-        }
-        
-        .scroll-top:hover {
-            background: #0066cc;
-            transform: scale(1.1);
-        }
-        
-        .scroll-top.show {
-            display: flex;
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 50px;
-            font-size: 18px;
-            color: #666;
-        }
-        
-        @media (max-width: 768px) {
-            h1 { font-size: 2em; }
-            .stat-number { font-size: 1.5em; }
-            #searchInput { font-size: 16px; padding: 15px 20px; }
-            .game-title { font-size: 16px; }
-            .download-btn { padding: 6px 12px; font-size: 12px; }
-        }
-    
-        .toolbar { display:flex; flex-wrap:wrap; gap:10px; margin-top:18px; }
-        .tool-btn, .filter-select { border:1px solid #003791; background:white; color:#003791; padding:10px 14px; border-radius:10px; font-weight:600; cursor:pointer; }
-        .tool-btn.active { background:#003791; color:white; }
-        .filter-panel { display:none; margin-top:15px; padding:15px; background:#fff; border:1px solid #ddd; border-radius:12px; gap:10px; flex-wrap:wrap; }
-        .filter-panel.show { display:flex; }
-        .filter-panel input, .filter-panel select { padding:10px; border:1px solid #ccc; border-radius:8px; }
-        .alpha-nav { display:flex; flex-wrap:wrap; gap:6px; padding:15px 30px; background:#fff; border-bottom:1px solid #eee; }
-        .alpha-nav button { border:0; background:#eef3ff; color:#003791; border-radius:7px; padding:7px 10px; cursor:pointer; font-weight:600; }
-        .alpha-nav button:hover { background:#003791; color:white; }
-        .game-cover { width:90px;height:120px;object-fit:cover;border-radius:8px;float:right;margin-left:15px; } .detail-cover{width:180px;max-height:250px;object-fit:cover;display:block;margin:0 auto 18px;border-radius:10px;} .library-bar{padding:12px 30px;background:#f1f5ff;border-bottom:1px solid #dde5f5;display:flex;flex-wrap:wrap;gap:8px;align-items:center}.library-chip{border:1px solid #003791;background:white;color:#003791;padding:8px 12px;border-radius:20px;cursor:pointer}.library-chip.active{background:#003791;color:white}.game-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
-        .favorite-btn { border:0; background:#fff3cd; color:#8a6500; padding:7px 10px; border-radius:7px; cursor:pointer; }
-        .favorite-btn.saved { background:#003791; color:white; }
-        .game-item.hidden { display:none; }
-        .empty-state { text-align:center; padding:60px 20px; color:#666; }
-        .modal { position:fixed; inset:0; background:rgba(0,0,0,.65); display:none; align-items:center; justify-content:center; padding:20px; z-index:1000; }
-        .modal.show { display:flex; }
-        .modal-card { background:white; color:#222; width:min(700px,100%); max-height:90vh; overflow:auto; border-radius:16px; padding:24px; position:relative; }
-        .modal-close { position:absolute; right:15px; top:12px; border:0; background:#eee; border-radius:50%; width:36px; height:36px; cursor:pointer; font-size:20px; }
-        .detail-title { color:#003791; margin:0 45px 15px 0; }
-        .detail-row { padding:10px 0; border-bottom:1px solid #eee; word-break:break-word; }
-        body.dark { background:#10131a; }
-        body.dark .container, body.dark .modal-card, body.dark .alpha-nav { background:#171b24; color:#eee; }
-        body.dark .search-container { background:#202631; border-color:#303846; }
-        body.dark #searchInput, body.dark .tool-btn, body.dark .filter-select, body.dark .filter-panel input, body.dark .filter-panel select { background:#11151d; color:#eee; border-color:#52627a; }
-        body.dark .game-item { background:#202631; }
-        body.dark .game-title, body.dark .letter-header { color:#69a8ff; }
-        body.dark .alpha-nav button { background:#252e3c; color:#9fc4ff; }
-        body.dark footer { background:#202631; color:#bbb; border-color:#303846; }
-        body.dark .favorite-btn { background:#403816; color:#ffe082; }
-        @media(max-width:768px) {
-            body { padding:8px; }
-            header { padding:25px 15px; }
-            .search-container { padding:15px; }
-            .games-container { padding:15px; }
-            .alpha-nav { padding:10px 15px; }
-            .tool-btn, .filter-select { flex:1; min-width:120px; }
-        }
-
-        .menu-toggle{position:fixed;top:18px;left:18px;z-index:1200;width:46px;height:46px;border:0;border-radius:12px;background:#003791;color:#fff;font-size:22px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25)}
-        .sidebar{position:fixed;left:0;top:0;bottom:0;width:300px;background:#fff;z-index:1100;transform:translateX(-105%);transition:transform .25s ease;box-shadow:8px 0 30px rgba(0,0,0,.2);padding:22px;overflow:auto}
-        .sidebar.open{transform:translateX(0)} .sidebar h2{color:#003791;margin:8px 0 22px}.sidebar-section{margin:18px 0;padding-top:15px;border-top:1px solid #e5e7eb}
-        .side-btn{display:block;width:100%;text-align:left;border:0;background:#f3f6fb;color:#17335f;padding:12px 14px;border-radius:10px;margin:7px 0;cursor:pointer;font-weight:600}
-        .side-btn:hover{background:#e1eaff}.side-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1050;display:none}.side-overlay.show{display:block}
-        .guide-content{line-height:1.55}.guide-content pre{white-space:pre-wrap;background:#111827;color:#e5e7eb;padding:12px;border-radius:10px;font-size:12px;overflow:auto}.guide-content h3{margin:14px 0 7px;color:#003791}
-        body.dark .sidebar{background:#171b24;color:#eee}.dark .sidebar h2,.dark .guide-content h3{color:#69a8ff}.dark .side-btn{background:#252e3c;color:#eee}.dark .sidebar-section{border-color:#303846}
-        @media(max-width:768px){.sidebar{width:min(300px,88vw)}.menu-toggle{top:10px;left:10px}}
+:root{--bg:#080b12;--panel:#111722;--panel2:#151c29;--panel3:#1a2332;--text:#f4f7fb;--muted:#8f9bad;--line:rgba(255,255,255,.08);--accent:#2d7dff;--accent2:#6ea8ff;--warn:#ffcc66;--shadow:0 24px 70px rgba(0,0,0,.38)}
+*{margin:0;padding:0;box-sizing:border-box}html{background:var(--bg)}body{min-height:100vh;padding:24px;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text);background:radial-gradient(circle at 12% 0%,rgba(45,125,255,.16),transparent 28rem),radial-gradient(circle at 88% 10%,rgba(110,168,255,.08),transparent 24rem),var(--bg)}body:not(.dark){--bg:#eef2f8;--panel:#fff;--panel2:#f7f9fc;--panel3:#edf2f8;--text:#111827;--muted:#64748b;--line:rgba(15,23,42,.09);--shadow:0 24px 60px rgba(15,23,42,.12)}
+.container{max-width:1480px;margin:0 auto;background:var(--panel);border:1px solid var(--line);border-radius:26px;box-shadow:var(--shadow);overflow:hidden}header{position:relative;padding:54px clamp(22px,5vw,72px) 42px;overflow:hidden;background:linear-gradient(135deg,#0d1b32,#0d1422 55%,#101827);border-bottom:1px solid var(--line)}header:after{content:"";position:absolute;width:380px;height:380px;border-radius:50%;right:-130px;top:-190px;background:radial-gradient(circle,rgba(45,125,255,.28),transparent 68%)}header h1{position:relative;z-index:1;font-size:clamp(2rem,4vw,3.65rem);line-height:1.05;letter-spacing:-.045em;margin-bottom:12px}header h1:after{content:"";display:inline-block;width:9px;height:9px;margin:0 0 8px 8px;border-radius:50%;background:var(--accent);box-shadow:0 0 18px rgba(45,125,255,.9)}.hero-subtitle{position:relative;z-index:1;color:#aebbd0;font-size:1rem;max-width:700px}
+.stats{position:relative;z-index:1;display:flex;flex-wrap:wrap;gap:10px;margin-top:28px}.stat-item{min-width:150px;padding:14px 16px;border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.045);border-radius:14px}.stat-number{display:block;font-size:1.35rem;font-weight:800}.stat-label{display:block;color:#8e9db4;font-size:.76rem;margin-top:3px;text-transform:uppercase;letter-spacing:.08em}
+.search-container{padding:22px clamp(16px,4vw,48px);background:var(--panel);border-bottom:1px solid var(--line)}.search-wrap{position:relative;max-width:980px;margin:0 auto}#searchInput{width:100%;height:58px;padding:0 54px 0 20px;border:1px solid var(--line);border-radius:16px;outline:0;background:var(--panel2);color:var(--text);font-size:16px;transition:.2s}#searchInput:focus{border-color:rgba(45,125,255,.75);box-shadow:0 0 0 4px rgba(45,125,255,.11)}#clearSearch{position:absolute;right:10px;top:9px;width:40px;height:40px;border:0;border-radius:11px;background:transparent;color:var(--muted);cursor:pointer;font-size:20px}#clearSearch:hover{background:var(--panel3);color:var(--text)}.search-info{margin:11px auto 0;max-width:980px;color:var(--muted);font-size:13px}
+.toolbar{max-width:980px;margin:14px auto 0;display:flex;flex-wrap:wrap;gap:8px}.tool-btn,.filter-select{border:1px solid var(--line);background:var(--panel2);color:var(--text);padding:10px 13px;border-radius:11px;font-weight:650;cursor:pointer;transition:.18s}.tool-btn:hover,.filter-select:hover{border-color:rgba(45,125,255,.45);transform:translateY(-1px)}.tool-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}.filter-panel{max-width:980px;margin:12px auto 0;padding:12px;background:var(--panel2);border:1px solid var(--line);border-radius:14px;gap:8px;flex-wrap:wrap}.filter-panel.show{display:flex}.filter-panel input,.filter-panel select{padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--text)}
+.library-bar{padding:13px clamp(16px,4vw,48px);background:var(--panel2);border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:7px;align-items:center;color:var(--muted)}.library-chip{border:1px solid var(--line);background:var(--panel);color:var(--muted);padding:8px 12px;border-radius:999px;cursor:pointer;font-weight:650}.library-chip.active{background:rgba(45,125,255,.14);color:var(--accent2);border-color:rgba(45,125,255,.45)}
+.alpha-nav{display:flex;gap:5px;overflow-x:auto;padding:11px clamp(16px,4vw,48px);background:var(--panel);border-bottom:1px solid var(--line);scrollbar-width:none}.alpha-nav::-webkit-scrollbar{display:none}.alpha-nav button{flex:0 0 auto;border:1px solid var(--line);background:var(--panel2);color:var(--muted);border-radius:8px;padding:6px 9px;cursor:pointer;font-weight:700}.alpha-nav button:hover{background:var(--accent);color:#fff}
+.games-container{padding:22px clamp(14px,4vw,48px);height:min(720px,72vh);overflow-y:auto;background:var(--panel);scroll-behavior:smooth}.game-item{position:relative;padding:18px;margin:0 0 10px;border:1px solid var(--line);border-radius:15px;background:var(--panel2);transition:.18s;min-height:90px}.game-item:hover{transform:translateY(-2px);border-color:rgba(45,125,255,.34);box-shadow:0 12px 28px rgba(0,0,0,.12)}.game-cover{width:64px;height:86px;object-fit:cover;border-radius:9px;float:right;margin-left:16px;border:1px solid var(--line)}.game-title{font-size:17px;line-height:1.35;font-weight:760;color:var(--text);margin-bottom:10px}.download-links{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.download-btn{padding:7px 10px;border-radius:8px;text-decoration:none;font-size:12px;font-weight:700;display:inline-block;transition:.16s}.btn-mediafire{background:#185ee9;color:#fff}.btn-1file{background:#16845e;color:#fff}.btn-other{background:#b86b08;color:#fff}.btn-page{background:var(--panel3);color:var(--muted);border:1px solid var(--line)}.game-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}.favorite-btn{border:1px solid rgba(255,204,102,.25);background:rgba(255,204,102,.09);color:var(--warn);padding:7px 10px;border-radius:8px;cursor:pointer;font-weight:700}.favorite-btn.saved{background:rgba(45,125,255,.14);border-color:rgba(45,125,255,.4);color:var(--accent2)}.link-count{font-size:11px;color:var(--muted);margin-top:9px;line-height:1.5}.empty-state,.loading{text-align:center;padding:70px 20px;color:var(--muted)}
+footer{padding:25px clamp(18px,4vw,48px);text-align:center;color:var(--muted);border-top:1px solid var(--line);background:var(--panel2);font-size:13px;line-height:1.8}footer a{color:var(--accent2);text-decoration:none}.scroll-top{position:fixed;bottom:22px;right:22px;background:var(--accent);color:#fff;width:44px;height:44px;border-radius:13px;display:none;align-items:center;justify-content:center;cursor:pointer;z-index:900}.scroll-top.show{display:flex}
+.modal{position:fixed;inset:0;background:rgba(2,5,10,.72);display:none;align-items:center;justify-content:center;padding:18px;z-index:1000;backdrop-filter:blur(8px)}.modal.show{display:flex}.modal-card{background:var(--panel);color:var(--text);border:1px solid var(--line);width:min(700px,100%);max-height:90vh;overflow:auto;border-radius:20px;padding:24px;position:relative;box-shadow:var(--shadow)}.modal-close{position:absolute;right:14px;top:12px;border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:10px;width:36px;height:36px;cursor:pointer;font-size:20px}.detail-title{color:var(--text);margin:0 48px 15px 0}.detail-cover{width:180px;max-height:250px;object-fit:cover;display:block;margin:0 auto 18px;border-radius:12px}.detail-row{padding:10px 0;border-bottom:1px solid var(--line);word-break:break-word}
+.menu-toggle{position:fixed;top:16px;left:16px;z-index:1200;width:44px;height:44px;border:1px solid rgba(255,255,255,.12);border-radius:12px;background:rgba(13,27,50,.9);color:#fff;font-size:20px;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.24)}.sidebar{position:fixed;left:0;top:0;bottom:0;width:310px;background:var(--panel);z-index:1100;transform:translateX(-105%);transition:transform .25s ease;box-shadow:18px 0 50px rgba(0,0,0,.3);padding:22px;overflow:auto;border-right:1px solid var(--line)}.sidebar.open{transform:translateX(0)}.sidebar h2{color:var(--text);margin:8px 0 22px}.sidebar-section{margin:18px 0;padding-top:15px;border-top:1px solid var(--line)}.side-btn{display:block;width:100%;text-align:left;border:1px solid transparent;background:var(--panel2);color:var(--text);padding:12px 14px;border-radius:10px;margin:7px 0;cursor:pointer;font-weight:650}.side-btn:hover{background:var(--panel3);border-color:var(--line)}.side-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1050;display:none}.side-overlay.show{display:block}.guide-content{line-height:1.6}.guide-content pre{white-space:pre-wrap;background:#080b12;color:#dbe6f7;padding:12px;border-radius:10px;font-size:12px;overflow:auto}.guide-content h3{margin:14px 0 7px;color:var(--accent2)}
+@media(max-width:768px){body{padding:8px}.container{border-radius:18px}header{padding:48px 18px 28px}header h1{font-size:2rem}.hero-subtitle{font-size:.9rem}.stats{display:grid;grid-template-columns:repeat(2,1fr)}.stat-item{min-width:0}.games-container{height:72vh;padding:14px 10px}.game-item{padding:15px}.game-title{font-size:16px}.game-cover{width:56px;height:76px}.download-btn{padding:7px 9px}.sidebar{width:min(310px,88vw)}.menu-toggle{top:10px;left:10px}.filter-select,.tool-btn{flex:1;min-width:120px}}
 </style>
 </head>
 <body><button class="menu-toggle" id="menuToggle" type="button" onclick="toggleSidebar()" aria-label="Menu">☰</button>
@@ -333,27 +41,10 @@
   </div>
 </aside>
     <div class="container">
-        <header>
-            <h1>🎮 PS4 Games Complete Database</h1>
-            <div class="stats">
-                <div class="stat-item">
-                    <span class="stat-number" id="totalGames">17,065</span>
-                    <span class="stat-label">Total Games</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-number" id="totalLinks">45,910</span>
-                    <span class="stat-label">Download Links</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-number">3 Sources</span>
-                    <span class="stat-label">Database</span>
-                </div>
-            </div>
-        </header>
-        
-        <div class="search-container">
-            <input type="text" id="searchInput" placeholder="🔍 Search for games... (e.g., 'Batman', 'Final Fantasy', 'Call of Duty')" onkeyup="searchGames()">
-            <div class="search-info" id="searchInfo">Loading games database...</div>
+        <header><h1>🎮 PS4 Games Database</h1><p class="hero-subtitle">Uma biblioteca organizada para encontrar jogos, versões, regiões e suas informações rapidamente.</p><div class="stats"><div class="stat-item"><span class="stat-number" id="totalGames">17,065</span><span class="stat-label">Jogos indexados</span></div><div class="stat-item"><span class="stat-number" id="totalLinks">45,910</span><span class="stat-label">Links catalogados</span></div><div class="stat-item"><span class="stat-number">3</span><span class="stat-label">Fontes</span></div></div></header>
+                <div class="search-container">
+            <div class="search-wrap"><input type="text" id="searchInput" autocomplete="off" placeholder="🔍 Pesquisar por nome, Title ID, região ou versão..." oninput="searchGames()"><button id="clearSearch" type="button" onclick="clearSearch()" aria-label="Limpar busca">×</button></div>
+            <div class="search-info" id="searchInfo">Carregando biblioteca...</div>
             <div class="filter-panel" id="filterPanel">
                 <select id="typeFilter" onchange="applyFilters()">
                     <option value="all">Todos</option>
@@ -395,7 +86,7 @@ let filteredGames = [];
 let renderedCount = 0;
 let currentMode = 'all';
 const BATCH_SIZE = 80;
-const DB_CACHE_NAME = 'ps4db-index-v1';
+const DB_CACHE_NAME = 'ps4db-index-v2';
 const DB_CACHE_VERSION = 1;
 let dbCachePromise = null;
 
@@ -615,12 +306,12 @@ function renderBatch(start=renderedCount) {
   if(start===0) container.innerHTML='';
   renderedCount=start;
   const end=Math.min(renderedCount+BATCH_SIZE, filteredGames.length);
+  if(renderedCount===0&&filteredGames.length===0){container.innerHTML='<div class="empty-state"><div style="font-size:34px;margin-bottom:10px">🔎</div><h3 style="color:var(--text);margin-bottom:7px">Nenhum resultado encontrado</h3><p>Tente parte do nome, o Title ID, a região ou uma grafia parecida.</p></div>';document.getElementById('searchInfo').textContent='Nenhum resultado encontrado';return;}
   const fragment=document.createDocumentFragment();
   for(let i=renderedCount;i<end;i++) fragment.appendChild(createGameCard(filteredGames[i]));
   container.appendChild(fragment);
   renderedCount=end;
-  document.getElementById('searchInfo').textContent =
-    `Showing ${renderedCount.toLocaleString()} of ${filteredGames.length.toLocaleString()} games`;
+  const q=(document.getElementById('searchInput').value||'').trim();document.getElementById('searchInfo').textContent=q?`${filteredGames.length.toLocaleString()} resultado(s) para “${q}” • mostrando ${renderedCount.toLocaleString()}`:`Mostrando ${renderedCount.toLocaleString()} de ${filteredGames.length.toLocaleString()} jogos`;
 }
 
 function loadNextBatchIfNeeded() {
@@ -664,25 +355,12 @@ function createGameCard(game) {
   return div;
 }
 
-function applyFilters() {
-  const q=(document.getElementById('searchInput').value||'').trim().toUpperCase();
-  const type=document.getElementById('typeFilter').value;
-  const min=document.getElementById('linksFilter').value;
-  const region=document.getElementById('regionFilter').value;
-  filteredGames=allGames.filter(g=>{
-    const matchesQ=!q||(g.name||'').toUpperCase().includes(q);
-    const matchesType=type==='all'||gameType(g)===type;
-    const links=Number(g.total_links||0);
-    const matchesLinks=min==='all'||(min==='0'?links===0:links>=Number(min));
-    const matchesRegion=region==='all'||g.region===region;
-    const idx=activeSource.startsWith('lib:')?Number(activeSource.slice(4)):-1;
-    const matchesSource=activeSource==='all'||g._source===activeSource||(idx>=0&&g._source===importedLibraries[idx]?.name);
-    return matchesQ&&matchesType&&matchesLinks&&matchesRegion&&matchesSource;
-  });
-  renderedCount=0; renderBatch(); 
-}
-function searchGames(){ applyFilters(); }
-
+function normalizeSearchText(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ');}
+function levenshtein(a,b){if(a===b)return 0;if(!a)return b.length;if(!b)return a.length;let p=Array.from({length:b.length+1},(_,i)=>i);for(let i=0;i<a.length;i++){const q=[i+1];for(let j=0;j<b.length;j++)q.push(Math.min(q[j]+1,p[j+1]+1,p[j]+(a[i]===b[j]?0:1)));p=q;}return p[b.length];}
+function searchScore(game,query){const q=normalizeSearchText(query);if(!q)return 1;const name=normalizeSearchText(game.name),title=normalizeSearchText(game.title_id),region=normalizeSearchText(game.region),version=normalizeSearchText(game.version),page=normalizeSearchText(game.page_url),fields=[name,title,region,version,page];let score=0;if(name===q)score+=1000;if(name.startsWith(q))score+=500;if(name.includes(q))score+=300;if(title.includes(q))score+=220;if(region.includes(q)||version.includes(q))score+=100;const tokens=q.split(' ').filter(Boolean),nt=name.split(' ').filter(Boolean);if(tokens.every(t=>nt.some(n=>n===t||n.includes(t))))score+=180;tokens.forEach(t=>{if(fields.some(f=>f.includes(t)))score+=45;if(t.length>=4&&nt.some(n=>n.startsWith(t)||levenshtein(t,n)<=Math.max(1,Math.floor(t.length/5))))score+=35;});return score;}
+function applyFilters(){const rawQ=(document.getElementById('searchInput').value||'').trim(),type=document.getElementById('typeFilter').value,min=document.getElementById('linksFilter').value,region=document.getElementById('regionFilter').value,idx=activeSource.startsWith('lib:')?Number(activeSource.slice(4)):-1;filteredGames=allGames.filter(g=>{const mq=!rawQ||searchScore(g,rawQ)>0,mt=type==='all'||gameType(g)===type,links=Number(g.total_links||0),ml=min==='all'||(min==='0'?links===0:links>=Number(min)),mr=region==='all'||g.region===region,ms=activeSource==='all'||g._source===activeSource||(idx>=0&&g._source===importedLibraries[idx]?.name);return mq&&mt&&ml&&mr&&ms;});if(rawQ){filteredGames.sort((a,b)=>searchScore(b,rawQ)-searchScore(a,rawQ));saveSearch(rawQ);}renderedCount=0;renderBatch();}
+function searchGames(){applyFilters();}
+function clearSearch(){const i=document.getElementById('searchInput');i.value='';applyFilters();i.focus();}
 function toggleFilters(){ document.getElementById('filterPanel').classList.toggle('show'); }
 function toggleFavorite(name,button) {
   let f=getFavorites(); const i=f.indexOf(name);
@@ -715,7 +393,7 @@ function toggleTheme(){
 }
 if(localStorage.getItem('ps4db_dark')==='1') document.body.classList.add('dark');
 
-document.getElementById('searchInput').addEventListener('keyup',()=>saveSearch(document.getElementById('searchInput').value.trim()));
+
 const gamesContainer=document.getElementById('gamesContainer'), scrollBtn=document.getElementById('scrollTop');
 gamesContainer.addEventListener('scroll',()=>{
   scrollBtn.classList.toggle('show',gamesContainer.scrollTop>300);
