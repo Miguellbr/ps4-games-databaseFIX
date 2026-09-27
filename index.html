@@ -381,33 +381,7 @@
     <div class="scroll-top" id="scrollTop" onclick="scrollToTop()">↑</div><div class="modal" id="guideModal" onclick="closeGuide(event)"><div class="modal-card"><button class="modal-close" onclick="closeGuide()">×</button><h2 class="detail-title" data-i18n="guideTitle">📖 Guia do site</h2><div class="guide-content" id="guideContent"></div></div></div><div class="modal" id="detailModal" onclick="closeDetails(event)"><div class="modal-card"><button class="modal-close" onclick="closeDetails()">×</button><h2 class="detail-title" id="detailTitle">Jogo</h2><div id="detailCover"></div><div id="detailBody"></div></div></div>
     
     <script>
-const I18N={pt:{menuTitle:'Menu',filters:'Filtros',favorites:'Favoritos',history:'Histórico',theme:'Tema',import:'Importar JSON',export:'Exportar minhas bibliotecas',guide:'Guia do site',language:'Idioma',guideTitle:'📖 Guia do site',search:'🔍 Pesquisar jogos...',loading:'Carregando biblioteca...',guideHtml:'<h3>Como usar</h3><p>Pesquise pelo nome do jogo ou abra o menu ☰ para acessar filtros, favoritos, histórico e tema.</p><h3>Importar seu JSON</h3><p>Abra <b>☰ → Importar JSON</b> e selecione seu arquivo. O site reconhece o formato <b>DATA</b> do seu game.json, incluindo URL do PKG, Title ID, região, versão, tamanho, firmware e capa.</p><h3>Exportar</h3><p>Use <b>☰ → Exportar minhas bibliotecas</b> para salvar todas as bibliotecas importadas em um único arquivo de backup. Esse arquivo pode ser importado novamente depois.</p><h3>Modelo de JSON</h3><pre>{
-  "DATA": {
-    "URL_DO_PKG": {
-      "title_id": "CUSA00000",
-      "region": "USA",
-      "name": "Nome do jogo",
-      "version": "01.00",
-      "release": "01-01-2020",
-      "size": 1234567890,
-      "min_fw": "9.00",
-      "cover_url": "https://exemplo.com/capa.png"
-    }
-  }
-}</pre><p>O campo <b>DATA</b> contém a URL do PKG como chave. Os demais campos são metadados opcionais.</p>'},en:{menuTitle:'Menu',filters:'Filters',favorites:'Favorites',history:'History',theme:'Theme',import:'Import JSON',export:'Export my libraries',guide:'Site guide',language:'Language',guideTitle:'📖 Site guide',search:'🔍 Search games...',loading:'Loading library...',guideHtml:'<h3>How to use</h3><p>Search by game name or open the ☰ menu for filters, favorites, history and theme.</p><h3>Import your JSON</h3><p>Open <b>☰ → Import JSON</b> and select your file. The site recognizes the <b>DATA</b> format from your game.json, including PKG URL, Title ID, region, version, size, firmware and cover.</p><h3>Export</h3><p>Use <b>☰ → Export my libraries</b> to save all imported libraries into one backup file. You can import that backup again later.</p><h3>JSON template</h3><pre>{
-  "DATA": {
-    "PKG_URL": {
-      "title_id": "CUSA00000",
-      "region": "USA",
-      "name": "Game name",
-      "version": "01.00",
-      "release": "01-01-2020",
-      "size": 1234567890,
-      "min_fw": "9.00",
-      "cover_url": "https://example.com/cover.png"
-    }
-  }
-}</pre><p>The <b>DATA</b> object uses the PKG URL as its key. The other fields are optional metadata.</p>'}};
+const I18N={pt:{menuTitle:'Menu',filters:'Filtros',favorites:'Favoritos',history:'Histórico',theme:'Tema',import:'Importar JSON',export:'Exportar minhas bibliotecas',guide:'Guia do site',language:'Idioma',guideTitle:'📖 Guia do site',search:'🔍 Pesquisar jogos...',loading:'Carregando biblioteca...',guideHtml:'<h3>Como usar</h3><p>Pesquise pelo nome do jogo ou abra o menu ☰ para acessar filtros, favoritos, histórico e tema.</p><h3>Importar seu JSON</h3><p>Abra <b>☰ → Importar JSON</b> e selecione seu arquivo. O site reconhece o formato <b>DATA</b> do seu game.json, incluindo URL do PKG, Title ID, região, versão, tamanho, firmware e capa.</p><h3>Exportar</h3><p>Use <b>☰ → Exportar minhas bibliotecas</b> para salvar todas as bibliotecas importadas em um único arquivo de backup. Esse arquivo pode ser importado novamente depois.</p><h3>Modelo de JSON</h3><pre>{\n  "DATA": {\n    "URL_DO_PKG": {\n      "title_id": "CUSA00000",\n      "region": "USA",\n      "name": "Nome do jogo",\n      "version": "01.00",\n      "release": "01-01-2020",\n      "size": 1234567890,\n      "min_fw": "9.00",\n      "cover_url": "https://exemplo.com/capa.png"\n    }\n  }\n}</pre><p>O campo <b>DATA</b> contém a URL do PKG como chave. Os demais campos são metadados opcionais.</p>'},en:{menuTitle:'Menu',filters:'Filters',favorites:'Favorites',history:'History',theme:'Theme',import:'Import JSON',export:'Export my libraries',guide:'Site guide',language:'Language',guideTitle:'📖 Site guide',search:'🔍 Search games...',loading:'Loading library...',guideHtml:'<h3>How to use</h3><p>Search by game name or open the ☰ menu for filters, favorites, history and theme.</p><h3>Import your JSON</h3><p>Open <b>☰ → Import JSON</b> and select your file. The site recognizes the <b>DATA</b> format from your game.json, including PKG URL, Title ID, region, version, size, firmware and cover.</p><h3>Export</h3><p>Use <b>☰ → Export my libraries</b> to save all imported libraries into one backup file. You can import that backup again later.</p><h3>JSON template</h3><pre>{\n  "DATA": {\n    "PKG_URL": {\n      "title_id": "CUSA00000",\n      "region": "USA",\n      "name": "Game name",\n      "version": "01.00",\n      "release": "01-01-2020",\n      "size": 1234567890,\n      "min_fw": "9.00",\n      "cover_url": "https://example.com/cover.png"\n    }\n  }\n}</pre><p>The <b>DATA</b> object uses the PKG URL as its key. The other fields are optional metadata.</p>'}};
 function toggleSidebar(force){const s=document.getElementById('sidebar'),o=document.getElementById('sideOverlay');if(!s||!o)return;const open=force===undefined?!s.classList.contains('open'):force;s.classList.toggle('open',open);o.classList.toggle('show',open);document.body.classList.toggle('sidebar-open',open);}
 function showGuide(){const lang=localStorage.getItem('ps4db_lang')||'pt';document.getElementById('guideContent').innerHTML=I18N[lang].guideHtml;document.getElementById('guideModal').classList.add('show');}
 function closeGuide(e){if(!e||e.target===document.getElementById('guideModal'))document.getElementById('guideModal').classList.remove('show');}
