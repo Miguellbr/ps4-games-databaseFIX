@@ -307,164 +307,116 @@
     
     <script>
         let allGames = [];
-        
-        // Load games data
+        let filteredGames = [];
+        const BATCH_SIZE = 100;
+        let renderedCount = 0;
+
         async function loadGames() {
             try {
-                const response = await fetch('ps4_games_expanded.json');
+                const response = await fetch('./ps4_games_expanded.json', { cache: 'no-cache' });
+                if (!response.ok) throw new Error('HTTP ' + response.status);
                 allGames = await response.json();
-                displayGames(allGames);
-                document.getElementById('searchInfo').textContent = `Showing all ${allGames.length.toLocaleString()} games`;
+                filteredGames = allGames;
+                document.getElementById('searchInfo').textContent =
+                    `Loaded ${allGames.length.toLocaleString()} games`;
+                renderBatch();
             } catch (error) {
-                document.getElementById('gamesContainer').innerHTML = '<div class="loading">Error loading games database. Please refresh the page.</div>';
+                document.getElementById('gamesContainer').innerHTML =
+                    '<div class="loading">Error loading games database. Please refresh the page.</div>';
                 console.error('Error loading games:', error);
             }
         }
-        
-        function displayGames(games) {
+
+        function renderBatch() {
             const container = document.getElementById('gamesContainer');
-            container.innerHTML = '';
-            
-            // Group by first letter
-            const grouped = {};
-            games.forEach(game => {
-                const firstChar = game.name[0].toUpperCase();
-                const letter = /[A-Z]/.test(firstChar) ? firstChar : '#';
-                if (!grouped[letter]) grouped[letter] = [];
-                grouped[letter].push(game);
-            });
-            
-            // Sort letters
-            const letters = Object.keys(grouped).sort((a, b) => {
-                if (a === '#') return -1;
-                if (b === '#') return 1;
-                return a.localeCompare(b);
-            });
-            
-            // Create sections
-            letters.forEach(letter => {
-                const section = document.createElement('div');
-                section.className = 'letter-section';
-                section.setAttribute('data-letter', letter);
-                
-                const header = document.createElement('div');
-                header.className = 'letter-header';
-                header.textContent = letter;
-                section.appendChild(header);
-                
-                grouped[letter].forEach(game => {
-                    const gameDiv = document.createElement('div');
-                    gameDiv.className = 'game-item';
-                    
-                    const title = document.createElement('div');
-                    title.className = 'game-title';
-                    title.textContent = game.name;
-                    gameDiv.appendChild(title);
-                    
-                    const linksDiv = document.createElement('div');
-                    linksDiv.className = 'download-links';
-                    
-                    // Add Mediafire links
-                    game.download_links.mediafire.forEach((link, index) => {
+            if (renderedCount === 0) container.innerHTML = '';
+
+            const end = Math.min(renderedCount + BATCH_SIZE, filteredGames.length);
+            const fragment = document.createDocumentFragment();
+
+            for (let i = renderedCount; i < end; i++) {
+                const game = filteredGames[i];
+                const gameDiv = document.createElement('div');
+                gameDiv.className = 'game-item';
+
+                const title = document.createElement('div');
+                title.className = 'game-title';
+                title.textContent = game.name;
+                gameDiv.appendChild(title);
+
+                const linksDiv = document.createElement('div');
+                linksDiv.className = 'download-links';
+
+                const addLinks = (links, className, label) => {
+                    (links || []).forEach((link, index) => {
                         const btn = document.createElement('a');
-                        btn.href = `redirect-optimized.html?url=${encodeURIComponent(link)}&game=${encodeURIComponent(game.name)}&host=mediafire`;
-                        btn.className = 'download-btn btn-mediafire';
-                        btn.textContent = `Mediafire ${index + 1}`;
+                        btn.href = `redirect-optimized.html?url=${encodeURIComponent(link)}&game=${encodeURIComponent(game.name)}`;
+                        btn.className = 'download-btn ' + className;
+                        btn.textContent = `${label} ${index + 1}`;
                         btn.target = '_blank';
                         linksDiv.appendChild(btn);
                     });
-                    
-                    // Add 1File links
-                    game.download_links['1file'].forEach((link, index) => {
-                        const btn = document.createElement('a');
-                        btn.href = `redirect-optimized.html?url=${encodeURIComponent(link)}&game=${encodeURIComponent(game.name)}&host=1file`;
-                        btn.className = 'download-btn btn-1file';
-                        btn.textContent = `1File ${index + 1}`;
-                        btn.target = '_blank';
-                        linksDiv.appendChild(btn);
-                    });
-                    
-                    // Add other links
-                    game.download_links.other.forEach((link, index) => {
-                        const btn = document.createElement('a');
-                        btn.href = `redirect-optimized.html?url=${encodeURIComponent(link)}&game=${encodeURIComponent(game.name)}&host=other`;
-                        btn.className = 'download-btn btn-other';
-                        btn.textContent = `Mirror ${index + 1}`;
-                        btn.target = '_blank';
-                        linksDiv.appendChild(btn);
-                    });
-                    
-                    // Add page link
-                    const pageBtn = document.createElement('a');
-                    pageBtn.href = game.page_url;
-                    pageBtn.className = 'download-btn btn-page';
-                    pageBtn.textContent = 'View Page';
-                    pageBtn.target = '_blank';
-                    linksDiv.appendChild(pageBtn);
-                    
-                    gameDiv.appendChild(linksDiv);
-                    
-                    const linkCount = document.createElement('div');
-                    linkCount.className = 'link-count';
-                    linkCount.textContent = `${game.total_links} download link${game.total_links !== 1 ? 's' : ''} available`;
-                    gameDiv.appendChild(linkCount);
-                    
-                    section.appendChild(gameDiv);
-                });
-                
-                container.appendChild(section);
-            });
+                };
+
+                addLinks(game.download_links?.mediafire, 'btn-mediafire', 'Mediafire');
+                addLinks(game.download_links?.['1file'], 'btn-1file', '1File');
+                addLinks(game.download_links?.other, 'btn-other', 'Mirror');
+
+                const pageBtn = document.createElement('a');
+                pageBtn.href = game.page_url;
+                pageBtn.className = 'download-btn btn-page';
+                pageBtn.textContent = 'View Page';
+                pageBtn.target = '_blank';
+                linksDiv.appendChild(pageBtn);
+
+                gameDiv.appendChild(linksDiv);
+
+                const linkCount = document.createElement('div');
+                linkCount.className = 'link-count';
+                linkCount.textContent = `${game.total_links || 0} download links available`;
+                gameDiv.appendChild(linkCount);
+
+                fragment.appendChild(gameDiv);
+            }
+
+            container.appendChild(fragment);
+            renderedCount = end;
+            document.getElementById('searchInfo').textContent =
+                `Showing ${renderedCount.toLocaleString()} of ${filteredGames.length.toLocaleString()} games`;
+
+            if (renderedCount < filteredGames.length) {
+                setTimeout(renderBatch, 0);
+            }
         }
-        
+
         function searchGames() {
             const input = document.getElementById('searchInput');
-            const filter = input.value.toUpperCase();
-            const sections = document.querySelectorAll('.letter-section');
-            const searchInfo = document.getElementById('searchInfo');
-            let visibleCount = 0;
-            
-            sections.forEach(section => {
-                const games = section.querySelectorAll('.game-item');
-                let sectionHasVisible = false;
-                
-                games.forEach(game => {
-                    const text = game.textContent || game.innerText;
-                    if (text.toUpperCase().indexOf(filter) > -1) {
-                        game.style.display = '';
-                        sectionHasVisible = true;
-                        visibleCount++;
-                    } else {
-                        game.style.display = 'none';
-                    }
-                });
-                
-                section.style.display = sectionHasVisible ? '' : 'none';
-            });
-            
-            if (filter) {
-                searchInfo.textContent = `Found ${visibleCount.toLocaleString()} game${visibleCount !== 1 ? 's' : ''} matching "${input.value}"`;
+            const filter = input.value.trim().toUpperCase();
+
+            if (!filter) {
+                filteredGames = allGames;
             } else {
-                searchInfo.textContent = `Showing all ${allGames.length.toLocaleString()} games`;
+                filteredGames = allGames.filter(game =>
+                    (game.name || '').toUpperCase().includes(filter)
+                );
             }
+
+            renderedCount = 0;
+            renderBatch();
         }
-        
-        // Scroll to top button
+
         const scrollBtn = document.getElementById('scrollTop');
         const gamesContainer = document.getElementById('gamesContainer');
-        
+
         gamesContainer.addEventListener('scroll', () => {
-            if (gamesContainer.scrollTop > 300) {
-                scrollBtn.classList.add('show');
-            } else {
-                scrollBtn.classList.remove('show');
-            }
+            if (gamesContainer.scrollTop > 300) scrollBtn.classList.add('show');
+            else scrollBtn.classList.remove('show');
         });
-        
+
         function scrollToTop() {
             gamesContainer.scrollTo({ top: 0, behavior: 'smooth' });
         }
-        
-        // Load games on page load
+
         loadGames();
     </script>
 </body>
