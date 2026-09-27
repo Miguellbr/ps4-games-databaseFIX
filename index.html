@@ -316,6 +316,7 @@
 </head>
 <body><button class="menu-toggle" onclick="toggleSidebar()" aria-label="Menu">☰</button>
 <div class="side-overlay" id="sideOverlay" onclick="toggleSidebar(false)"></div>
+<input type="file" id="jsonImport" accept=".json,application/json" multiple hidden onchange="importJSONFiles(event)">
 <aside class="sidebar" id="sidebar">
   <h2>🎮 <span data-i18n="menuTitle">Menu</span></h2>
   <button class="side-btn" onclick="toggleFilters();toggleSidebar(false)">⚙️ <span data-i18n="filters">Filtros</span></button>
@@ -447,11 +448,51 @@ async function loadGames() {
 
 function normalizeMainGame(g){return {...g,_source:'main',_sourceName:'Biblioteca principal',region:g.region||'',version:g.version||'',release:g.release||'',size:Number(g.size||0),min_fw:g.min_fw||'',cover_url:g.cover_url||'',description:g.description||''};}
 function normalizeImportedEntry(url,item,source){const r=item||{},l=r.download_links||{};const pkg=url?[url]:(l.pkg||[]);return {name:r.name||r.title||r.game_name||'Jogo sem nome',page_url:r.page_url||'',download_links:{pkg:pkg,mediafire:l.mediafire||[], '1file':l['1file']||[],other:l.other||[]},total_links:Number(r.total_links||0)||[...pkg,...(l.mediafire||[]),...(l['1file']||[]),...(l.other||[])].filter(Boolean).length,title_id:r.title_id||'',region:r.region||'',version:r.version||'',release:r.release||'',size:Number(r.size||0),min_fw:r.min_fw||'',cover_url:r.cover_url||'',description:r.description||'',_source:source,_sourceName:source};}
-function parseImportedJSON(data,source){const out=[];if(data&&data.DATA){Object.entries(data.DATA).forEach(([url,item])=>out.push(normalizeImportedEntry(url,item,source)));}else if(Array.isArray(data)){data.forEach(x=>out.push(normalizeImportedEntry(x.url||x.pkg_url||'',x,source)));}else if(data&&Array.isArray(data.games)){data.games.forEach(x=>out.push(normalizeImportedEntry(x.url||x.pkg_url||'',x,source)));}return out;}
+function parseImportedJSON(data,source){
+  const out=[];
+  if(data&&Array.isArray(data.libraries)){
+    data.libraries.forEach(lib=>{
+      const libGames=parseImportedJSON({games:lib.games||[]},lib.name||source);
+      out.push(...libGames);
+    });
+  }else if(data&&data.DATA){
+    Object.entries(data.DATA).forEach(([url,item])=>out.push(normalizeImportedEntry(url,item,source)));
+  }else if(Array.isArray(data)){
+    data.forEach(x=>out.push(normalizeImportedEntry(x.url||x.pkg_url||'',x,source)));
+  }else if(data&&Array.isArray(data.games)){
+    data.games.forEach(x=>out.push(normalizeImportedEntry(x.url||x.pkg_url||'',x,source)));
+  }
+  return out;
+}
 function rebuildAllGames(){const imported=importedLibraries.flatMap(x=>x.games||[]);allGames=[...allGames.filter(x=>x._source==='main'),...imported];rebuildLibraryBar();rebuildRegionFilter();updateStats();}
 function rebuildLibraryBar(){const bar=document.getElementById('libraryBar');if(!bar)return;bar.innerHTML='<strong>Bibliotecas:</strong>';[['Todas','all'],['Principal','main']].forEach(x=>{const b=document.createElement('button');b.className='library-chip '+(activeSource===x[1]?'active':'');b.textContent=x[0];b.onclick=()=>{activeSource=x[1];applyFilters();rebuildLibraryBar();};bar.appendChild(b);});importedLibraries.forEach((lib,i)=>{const v='lib:'+i,b=document.createElement('button');b.className='library-chip '+(activeSource===v?'active':'');b.textContent='📁 '+lib.name;b.onclick=()=>{activeSource=v;applyFilters();rebuildLibraryBar();};bar.appendChild(b);});}
 function rebuildRegionFilter(){const s=document.getElementById('regionFilter');if(!s)return;const cur=s.value,rs=[...new Set(allGames.map(x=>x.region).filter(Boolean))].sort();s.innerHTML='<option value="all">Todas as regiões</option>'+rs.map(x=>'<option value="'+x.replace(/"/g,'&quot;')+'">'+x+'</option>').join('');if(rs.includes(cur))s.value=cur;}
-async function importJSONFiles(e){for(const file of [...e.target.files]){try{const games=parseImportedJSON(JSON.parse(await file.text()),file.name);if(!games.length){alert(file.name+': nenhum jogo reconhecido.');continue;}importedLibraries=importedLibraries.filter(x=>x.name!==file.name);importedLibraries.push({name:file.name,games});}catch(err){alert('Não foi possível importar '+file.name+': JSON inválido.');}}localStorage.setItem('ps4db_libraries',JSON.stringify(importedLibraries));rebuildAllGames();filteredGames=allGames;renderedCount=0;renderBatch();e.target.value='';}
+async function importJSONFiles(e){
+  for(const file of [...e.target.files]){
+    try{
+      const data=JSON.parse(await file.text());
+      if(data&&Array.isArray(data.libraries)){
+        data.libraries.forEach(lib=>{
+          const games=parseImportedJSON({games:lib.games||[]},lib.name||file.name);
+          if(games.length) importedLibraries=importedLibraries.filter(x=>x.name!==lib.name).concat([{name:lib.name,games}]);
+        });
+        continue;
+      }
+      const games=parseImportedJSON(data,file.name);
+      if(!games.length){alert(file.name+': nenhum jogo reconhecido.');continue;}
+      importedLibraries=importedLibraries.filter(x=>x.name!==file.name);
+      importedLibraries.push({name:file.name,games});
+    }catch(err){
+      alert('Não foi possível importar '+file.name+': JSON inválido.');
+    }
+  }
+  localStorage.setItem('ps4db_libraries',JSON.stringify(importedLibraries));
+  rebuildAllGames();
+  filteredGames=allGames;
+  renderedCount=0;
+  renderBatch();
+  e.target.value='';
+}
 function exportLibraries(){if(!importedLibraries.length){alert('Nenhuma biblioteca importada para exportar.');return;}const blob=new Blob([JSON.stringify({version:1,exported_at:new Date().toISOString(),libraries:importedLibraries},null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='minhas-bibliotecas-ps4.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
 function formatSize(b){return b?(b/1073741824).toFixed(2)+' GB':'';}
 function gameType(game) {
@@ -492,7 +533,14 @@ function renderBatch(start=renderedCount) {
   renderedCount=end;
   document.getElementById('searchInfo').textContent =
     `Showing ${renderedCount.toLocaleString()} of ${filteredGames.length.toLocaleString()} games`;
-  if(renderedCount<filteredGames.length) setTimeout(()=>renderBatch(),0);
+}
+
+function loadNextBatchIfNeeded() {
+  const container=document.getElementById('gamesContainer');
+  if(renderedCount < filteredGames.length &&
+     container.scrollTop + container.clientHeight >= container.scrollHeight - 500) {
+    renderBatch();
+  }
 }
 
 function createGameCard(game) {
@@ -581,7 +629,10 @@ if(localStorage.getItem('ps4db_dark')==='1') document.body.classList.add('dark')
 
 document.getElementById('searchInput').addEventListener('keyup',()=>saveSearch(document.getElementById('searchInput').value.trim()));
 const gamesContainer=document.getElementById('gamesContainer'), scrollBtn=document.getElementById('scrollTop');
-gamesContainer.addEventListener('scroll',()=>scrollBtn.classList.toggle('show',gamesContainer.scrollTop>300));
+gamesContainer.addEventListener('scroll',()=>{
+  scrollBtn.classList.toggle('show',gamesContainer.scrollTop>300);
+  loadNextBatchIfNeeded();
+});
 function scrollToTop(){gamesContainer.scrollTo({top:0,behavior:'smooth'});}
 loadGames();
 </script>
