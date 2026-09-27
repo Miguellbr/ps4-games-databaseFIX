@@ -432,13 +432,99 @@ async function loadGames() {
   try {
     const response = await fetch('./ps4_games_expanded.json', { cache:'default' });
     if (!response.ok) throw new Error('HTTP ' + response.status);
-    const main = await response.json();
-    allGames = main.map(normalizeMainGame);
-    rebuildLibraryBar(); rebuildRegionFilter();
-    filteredGames = allGames;
+    if (!response.body) throw new Error('Streaming não suportado neste navegador');
+
+    allGames = [];
+    filteredGames = [];
+    renderedCount = 0;
+    document.getElementById('gamesContainer').innerHTML = '';
+    document.getElementById('searchInfo').textContent = 'Carregando jogos...';
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let depth = 0, inString = false, escaped = false, objectStart = -1;
+    let loaded = 0, pendingRender = 0;
+
+    const processChunk = async (chunk, final=false) => {
+      buffer += chunk;
+      let i = 0;
+      while (i < buffer.length) {
+        const c = buffer[i];
+
+        if (inString) {
+          if (escaped) escaped = false;
+          else if (c === '\\') escaped = true;
+          else if (c === '"') inString = false;
+          i++;
+          continue;
+        }
+
+        if (c === '"') { inString = true; i++; continue; }
+
+        if (c === '{') {
+          if (depth === 0) objectStart = i;
+          depth++;
+        } else if (c === '}') {
+          depth--;
+          if (depth === 0 && objectStart >= 0) {
+            const raw = buffer.slice(objectStart, i + 1);
+            try {
+              const game = normalizeMainGame(JSON.parse(raw));
+              allGames.push(game);
+              filteredGames.push(game);
+              loaded++;
+              pendingRender++;
+            } catch (err) {
+              console.warn('Registro ignorado:', err);
+            }
+            objectStart = -1;
+            buffer = buffer.slice(i + 1);
+            i = 0;
+            continue;
+          }
+        }
+        i++;
+      }
+
+      if (pendingRender >= 40) {
+        const fragment = document.createDocumentFragment();
+        const from = renderedCount;
+        const to = Math.min(filteredGames.length, from + pendingRender);
+        for (let j = from; j < to; j++) fragment.appendChild(createGameCard(filteredGames[j]));
+        document.getElementById('gamesContainer').appendChild(fragment);
+        renderedCount = to;
+        pendingRender = 0;
+        document.getElementById('searchInfo').textContent =
+          'Carregando... ' + loaded.toLocaleString() + ' jogos recebidos';
+        await new Promise(requestAnimationFrame);
+      }
+
+      if (depth === 0 && buffer.length > 10000) buffer = buffer.slice(-2);
+    };
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      await processChunk(decoder.decode(value, {stream:true}));
+    }
+    await processChunk(decoder.decode(), true);
+
+    if (pendingRender > 0) {
+      const fragment = document.createDocumentFragment();
+      for (let j = renderedCount; j < filteredGames.length; j++) {
+        fragment.appendChild(createGameCard(filteredGames[j]));
+      }
+      document.getElementById('gamesContainer').appendChild(fragment);
+      renderedCount = filteredGames.length;
+    }
+
+    rebuildLibraryBar();
+    rebuildRegionFilter();
     buildAlphaNav();
     updateStats();
-    renderBatch();
+    document.getElementById('searchInfo').textContent =
+      'Showing ' + renderedCount.toLocaleString() + ' of ' + filteredGames.length.toLocaleString() + ' games';
   } catch (error) {
     document.getElementById('gamesContainer').innerHTML =
       '<div class="empty-state">Erro ao carregar o banco de dados. Recarregue a página.</div>';
