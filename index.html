@@ -86,8 +86,10 @@ let activeSource = 'all';
 let filteredGames = [];
 let renderedCount = 0;
 let currentMode = 'all';
-const BATCH_SIZE = 80;
-const DB_CACHE_NAME = 'ps4db-index-v5';
+const BATCH_SIZE = 32;
+let renderGeneration = 0;
+let renderTimer = null;
+const DB_CACHE_NAME = 'ps4db-index-v6';
 const DB_CACHE_VERSION = 1;
 let dbCachePromise = null;
 
@@ -322,7 +324,7 @@ function renderBatch(start=renderedCount, generation=renderGeneration){
     ? (filteredGames.length.toLocaleString()+' resultado(s) para “'+q+'” • carregando '+renderedCount.toLocaleString()+' de '+filteredGames.length.toLocaleString())
     : ('Carregando '+renderedCount.toLocaleString()+' de '+filteredGames.length.toLocaleString()+' jogos…');
   if(end<filteredGames.length && generation===renderGeneration){
-    renderTimer=setTimeout(()=>renderBatch(end,generation),0);
+    renderTimer=setTimeout(()=>renderBatch(end,generation),16);
   }else{
     renderTimer=null;
     document.getElementById('searchInfo').textContent=q
@@ -420,7 +422,6 @@ if(localStorage.getItem('ps4db_dark')==='1') document.body.classList.add('dark')
 const gamesContainer=document.getElementById('gamesContainer'), scrollBtn=document.getElementById('scrollTop');
 gamesContainer.addEventListener('scroll',()=>{
   scrollBtn.classList.toggle('show',gamesContainer.scrollTop>300);
-  loadNextBatchIfNeeded();
 });
 function scrollToTop(){gamesContainer.scrollTo({top:0,behavior:'smooth'});}
 loadGames();
