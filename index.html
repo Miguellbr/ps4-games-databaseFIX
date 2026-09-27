@@ -395,6 +395,43 @@ let filteredGames = [];
 let renderedCount = 0;
 let currentMode = 'all';
 const BATCH_SIZE = 80;
+const DB_CACHE_NAME = 'ps4db-index-v1';
+const DB_CACHE_VERSION = 1;
+let dbCachePromise = null;
+
+function openDatabaseCache(){
+  if(dbCachePromise) return dbCachePromise;
+  dbCachePromise = new Promise((resolve,reject)=>{
+    const req=indexedDB.open(DB_CACHE_NAME, DB_CACHE_VERSION);
+    req.onupgradeneeded=()=>{ const db=req.result; if(!db.objectStoreNames.contains('games')) db.createObjectStore('games',{keyPath:'id'}); };
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error);
+  });
+  return dbCachePromise;
+}
+async function readDatabaseCache(){
+  try{
+    const db=await openDatabaseCache();
+    return await new Promise((resolve,reject)=>{
+      const tx=db.transaction('games','readonly'), store=tx.objectStore('games'), out=[];
+      const req=store.openCursor();
+      req.onsuccess=()=>{ const c=req.result; if(c){ out.push(c.value.game); c.continue(); } else resolve(out); };
+      req.onerror=()=>reject(req.error);
+    });
+  }catch(err){ console.warn('Cache local indisponível:',err); return []; }
+}
+async function writeDatabaseCache(games){
+  try{
+    const db=await openDatabaseCache();
+    await new Promise((resolve,reject)=>{
+      const tx=db.transaction('games','readwrite'), store=tx.objectStore('games');
+      store.clear();
+      games.forEach((game,i)=>store.put({id:i,game}));
+      tx.oncomplete=resolve; tx.onerror=()=>reject(tx.error);
+    });
+  }catch(err){ console.warn('Não foi possível salvar cache local:',err); }
+}
+
 const FAVORITES_KEY = 'ps4db_favorites';
 const HISTORY_KEY = 'ps4db_history';
 
@@ -404,8 +441,24 @@ const getHistory = () => JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
 
 async function loadGames() {
   try {
-    // Deixa o navegador pintar o menu antes de começar o processamento do banco.
     await new Promise(requestAnimationFrame);
+
+    const cached = await readDatabaseCache();
+    if(cached.length){
+      allGames = cached.map(normalizeMainGame);
+      filteredGames = [...allGames];
+      renderedCount = 0;
+      document.getElementById('gamesContainer').innerHTML = '';
+      document.getElementById('searchInfo').textContent =
+        'Biblioteca carregada do cache local: ' + allGames.length.toLocaleString() + ' jogos';
+      rebuildLibraryBar();
+      rebuildRegionFilter();
+      buildAlphaNav();
+      updateStats();
+      renderBatch();
+      return;
+    }
+
     const response = await fetch('./ps4_games_expanded.json', { cache:'default' });
     if (!response.ok) throw new Error('HTTP ' + response.status);
     if (!response.body) throw new Error('Streaming não suportado neste navegador');
@@ -413,95 +466,68 @@ async function loadGames() {
     allGames = [];
     filteredGames = [];
     renderedCount = 0;
-    document.getElementById('gamesContainer').innerHTML = '';
-    document.getElementById('searchInfo').textContent = 'Carregando jogos...';
+    document.getElementById('gamesContainer').innerHTML =
+      '<div class="loading">Preparando o índice local da biblioteca...</div>';
+    document.getElementById('searchInfo').textContent = 'Baixando e indexando jogos...';
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
     let depth = 0, inString = false, escaped = false, objectStart = -1;
-    let loaded = 0, pendingRender = 0;
+    let loaded = 0;
 
-    const processChunk = async (chunk, final=false) => {
-      buffer += chunk;
-      let i = 0;
-      while (i < buffer.length) {
-        const c = buffer[i];
-
-        if (inString) {
-          if (escaped) escaped = false;
-          else if (c === '\\') escaped = true;
-          else if (c === '"') inString = false;
-          i++;
-          continue;
+    while(true){
+      const {value,done}=await reader.read();
+      if(done) break;
+      buffer += decoder.decode(value,{stream:true});
+      let i=0;
+      while(i<buffer.length){
+        const c=buffer[i];
+        if(inString){
+          if(escaped) escaped=false;
+          else if(c==='\\') escaped=true;
+          else if(c==='"') inString=false;
+          i++; continue;
         }
-
-        if (c === '"') { inString = true; i++; continue; }
-
-        if (c === '{') {
-          if (depth === 0) objectStart = i;
+        if(c==='"'){inString=true;i++;continue;}
+        if(c==='{'){
+          if(depth===0) objectStart=i;
           depth++;
-        } else if (c === '}') {
+        }else if(c==='}'){
           depth--;
-          if (depth === 0 && objectStart >= 0) {
-            const raw = buffer.slice(objectStart, i + 1);
-            try {
-              const game = normalizeMainGame(JSON.parse(raw));
-              allGames.push(game);
-              filteredGames.push(game);
+          if(depth===0 && objectStart>=0){
+            const raw=buffer.slice(objectStart,i+1);
+            try{
+              allGames.push(normalizeMainGame(JSON.parse(raw)));
               loaded++;
-              pendingRender++;
-            } catch (err) {
-              console.warn('Registro ignorado:', err);
-            }
-            objectStart = -1;
-            buffer = buffer.slice(i + 1);
-            i = 0;
+            }catch(err){ console.warn('Registro ignorado:',err); }
+            objectStart=-1;
+            buffer=buffer.slice(i+1);
+            i=0;
             continue;
           }
         }
         i++;
       }
-
-      if (pendingRender >= 40) {
-        const fragment = document.createDocumentFragment();
-        const from = renderedCount;
-        const to = Math.min(filteredGames.length, from + pendingRender);
-        for (let j = from; j < to; j++) fragment.appendChild(createGameCard(filteredGames[j]));
-        document.getElementById('gamesContainer').appendChild(fragment);
-        renderedCount = to;
-        pendingRender = 0;
-        document.getElementById('searchInfo').textContent =
-          'Carregando... ' + loaded.toLocaleString() + ' jogos recebidos';
-        await new Promise(requestAnimationFrame);
-      }
-
-      if (depth === 0 && buffer.length > 10000) buffer = buffer.slice(-2);
-    };
-
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      await processChunk(decoder.decode(value, {stream:true}));
+      document.getElementById('searchInfo').textContent =
+        'Indexando... ' + loaded.toLocaleString() + ' jogos recebidos';
+      await new Promise(requestAnimationFrame);
     }
-    await processChunk(decoder.decode(), true);
+    buffer += decoder.decode();
+    if(loaded===0) throw new Error('Nenhum registro encontrado no banco');
 
-    if (pendingRender > 0) {
-      const fragment = document.createDocumentFragment();
-      for (let j = renderedCount; j < filteredGames.length; j++) {
-        fragment.appendChild(createGameCard(filteredGames[j]));
-      }
-      document.getElementById('gamesContainer').appendChild(fragment);
-      renderedCount = filteredGames.length;
-    }
+    filteredGames=[...allGames];
+    document.getElementById('searchInfo').textContent =
+      'Salvando índice local... ' + loaded.toLocaleString() + ' jogos';
+    await writeDatabaseCache(allGames);
 
     rebuildLibraryBar();
     rebuildRegionFilter();
     buildAlphaNav();
     updateStats();
-    document.getElementById('searchInfo').textContent =
-      'Showing ' + renderedCount.toLocaleString() + ' of ' + filteredGames.length.toLocaleString() + ' games';
-  } catch (error) {
+    renderedCount=0;
+    renderBatch();
+  } catch(error) {
     document.getElementById('gamesContainer').innerHTML =
       '<div class="empty-state">Erro ao carregar o banco de dados. Recarregue a página.</div>';
     console.error(error);
