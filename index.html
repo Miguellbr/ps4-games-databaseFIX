@@ -291,11 +291,40 @@ function updateStats() {
 }
 
 let activeLetter='';
-function buildAlphaNav(){const nav=document.getElementById('alphaNav');if(!nav)return;nav.innerHTML='';const all=document.createElement('button');all.type='button';all.textContent='Todos';all.className=!activeLetter?'active':'';all.onclick=()=>{activeLetter='';buildAlphaNav();applyFilters();};nav.appendChild(all);'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('').forEach(letter=>{const b=document.createElement('button');b.type='button';b.textContent=letter;b.className=activeLetter===letter?'active':'';b.onclick=()=>{activeLetter=letter;buildAlphaNav();applyFilters();};nav.appendChild(b);});}
+function normalizeLetter(value){
+  const first=String(value||'').trim().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toUpperCase().charAt(0);
+  return /^[A-Z]$/.test(first) ? first : (first>='0'&&first<='9' ? first : '');
+}
+function setActiveLetter(letter){
+  activeLetter=String(letter||'').toUpperCase();
+  buildAlphaNav();
+  applyFilters();
+}
+function buildAlphaNav(){
+  const nav=document.getElementById('alphaNav');
+  if(!nav)return;
+  nav.innerHTML='';
+  const all=document.createElement('button');
+  all.type='button';
+  all.textContent='Todos';
+  all.className=!activeLetter?'active':'';
+  all.onclick=()=>setActiveLetter('');
+  nav.appendChild(all);
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('').forEach(letter=>{
+    const b=document.createElement('button');
+    b.type='button';
+    b.textContent=letter;
+    b.className=activeLetter===letter?'active':'';
+    b.onclick=()=>setActiveLetter(letter);
+    nav.appendChild(b);
+  });
+}
 function jumpToLetter(letter) {
-  const game=filteredGames.find(g=>((g.name||'').charAt(0).toUpperCase()===letter)|| (letter==='#' && !/[A-Z]/.test((g.name||'').charAt(0).toUpperCase())));
+  const game=filteredGames.find(g=>normalizeLetter(g.name)===letter);
   if(game) {
-    const index=filteredGames.indexOf(game); renderedCount=0; renderBatch(index);
+    const index=filteredGames.indexOf(game);
+    renderedCount=0;
+    renderBatch(index);
   }
 }
 
