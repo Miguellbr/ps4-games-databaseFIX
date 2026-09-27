@@ -297,9 +297,41 @@ function jumpToLetter(letter) {
   }
 }
 
-function renderBatch(start=renderedCount){const container=document.getElementById('gamesContainer');if(start===0)container.innerHTML='';const end=Math.min(start+BATCH_SIZE,filteredGames.length);if(start===0&&filteredGames.length===0){container.innerHTML='<div class="empty-state"><div style="font-size:34px;margin-bottom:10px">🔎</div><h3 style="color:var(--text);margin-bottom:7px">Nenhum resultado encontrado</h3><p>Tente parte do nome, o Title ID, a região ou uma grafia parecida.</p></div>';document.getElementById('searchInfo').textContent='Nenhum resultado encontrado';renderedCount=0;return;}const fragment=document.createDocumentFragment();for(let i=start;i<end;i++)fragment.appendChild(createGameCard(filteredGames[i]));container.appendChild(fragment);renderedCount=end;const q=(document.getElementById('searchInput').value||'').trim();document.getElementById('searchInfo').textContent=q?`${filteredGames.length.toLocaleString()} resultado(s) para “${q}” • mostrando ${renderedCount.toLocaleString()}`:`Mostrando ${renderedCount.toLocaleString()} de ${filteredGames.length.toLocaleString()} jogos`;
+function renderBatch(start=renderedCount, generation=renderGeneration){
+  const container=document.getElementById('gamesContainer');
+  if(start===0){
+    renderGeneration++;
+    generation=renderGeneration;
+    if(renderTimer){clearTimeout(renderTimer);renderTimer=null;}
+    container.innerHTML='';
+  }
+  if(generation!==renderGeneration)return;
+  const end=Math.min(start+BATCH_SIZE,filteredGames.length);
+  if(start===0&&filteredGames.length===0){
+    container.innerHTML='<div class="empty-state"><div style="font-size:34px;margin-bottom:10px">🔎</div><h3 style="color:var(--text);margin-bottom:7px">Nenhum resultado encontrado</h3><p>Tente parte do nome, o Title ID, a região ou uma grafia parecida.</p></div>';
+    document.getElementById('searchInfo').textContent='Nenhum resultado encontrado';
+    renderedCount=0;
+    return;
+  }
+  const fragment=document.createDocumentFragment();
+  for(let i=start;i<end;i++)fragment.appendChild(createGameCard(filteredGames[i]));
+  container.appendChild(fragment);
+  renderedCount=end;
+  const q=(document.getElementById('searchInput').value||'').trim();
+  document.getElementById('searchInfo').textContent=q
+    ? (filteredGames.length.toLocaleString()+' resultado(s) para “'+q+'” • carregando '+renderedCount.toLocaleString()+' de '+filteredGames.length.toLocaleString())
+    : ('Carregando '+renderedCount.toLocaleString()+' de '+filteredGames.length.toLocaleString()+' jogos…');
+  if(end<filteredGames.length && generation===renderGeneration){
+    renderTimer=setTimeout(()=>renderBatch(end,generation),0);
+  }else{
+    renderTimer=null;
+    document.getElementById('searchInfo').textContent=q
+      ? (filteredGames.length.toLocaleString()+' resultado(s) para “'+q+'” • '+renderedCount.toLocaleString()+' carregados')
+      : (renderedCount.toLocaleString()+' de '+filteredGames.length.toLocaleString()+' jogos carregados');
+  }
 }
-function loadNextBatchIfNeeded(){const c=document.getElementById('gamesContainer');if(!c)return;if(c.scrollTop+c.clientHeight>=c.scrollHeight-500&&renderedCount<filteredGames.length)renderBatch(renderedCount);}
+function loadNextBatchIfNeeded(){}
+
 function createGameCard(game) {
   const div=document.createElement('div'); div.className='game-item';
   if(game.cover_url){const img=document.createElement('img');img.className='game-cover';img.src=game.cover_url;img.alt='Capa de '+game.name;img.loading='lazy';div.appendChild(img);}
