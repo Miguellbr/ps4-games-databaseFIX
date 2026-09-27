@@ -314,7 +314,7 @@
         @media(max-width:768px){.sidebar{width:min(300px,88vw)}.menu-toggle{top:10px;left:10px}}
 </style>
 </head>
-<body><button class="menu-toggle" onclick="toggleSidebar()" aria-label="Menu">☰</button>
+<body><button class="menu-toggle" id="menuToggle" type="button" onclick="toggleSidebar()" aria-label="Menu">☰</button>
 <div class="side-overlay" id="sideOverlay" onclick="toggleSidebar(false)"></div>
 <input type="file" id="jsonImport" accept=".json,application/json" multiple hidden onchange="importJSONFiles(event)">
 <aside class="sidebar" id="sidebar">
@@ -408,7 +408,7 @@ const I18N={pt:{menuTitle:'Menu',filters:'Filtros',favorites:'Favoritos',history
     }
   }
 }</pre><p>The <b>DATA</b> object uses the PKG URL as its key. The other fields are optional metadata.</p>'}};
-function toggleSidebar(force){const s=document.getElementById('sidebar'),o=document.getElementById('sideOverlay');const open=force===undefined?!s.classList.contains('open'):force;s.classList.toggle('open',open);o.classList.toggle('show',open);}
+function toggleSidebar(force){const s=document.getElementById('sidebar'),o=document.getElementById('sideOverlay');if(!s||!o)return;const open=force===undefined?!s.classList.contains('open'):force;s.classList.toggle('open',open);o.classList.toggle('show',open);document.body.classList.toggle('sidebar-open',open);}
 function showGuide(){const lang=localStorage.getItem('ps4db_lang')||'pt';document.getElementById('guideContent').innerHTML=I18N[lang].guideHtml;document.getElementById('guideModal').classList.add('show');}
 function closeGuide(e){if(!e||e.target===document.getElementById('guideModal'))document.getElementById('guideModal').classList.remove('show');}
 function setLanguage(lang){localStorage.setItem('ps4db_lang',lang);const t=I18N[lang];document.querySelectorAll('[data-i18n]').forEach(el=>el.textContent=t[el.dataset.i18n]||el.textContent);document.getElementById('searchInput').placeholder=t.search;document.querySelector('.loading')?.replaceChildren(document.createTextNode(t.loading));if(document.getElementById('guideModal').classList.contains('show'))showGuide();}
@@ -430,6 +430,8 @@ const getHistory = () => JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
 
 async function loadGames() {
   try {
+    // Deixa o navegador pintar o menu antes de começar o processamento do banco.
+    await new Promise(requestAnimationFrame);
     const response = await fetch('./ps4_games_expanded.json', { cache:'default' });
     if (!response.ok) throw new Error('HTTP ' + response.status);
     if (!response.body) throw new Error('Streaming não suportado neste navegador');
