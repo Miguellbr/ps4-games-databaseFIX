@@ -304,9 +304,33 @@
             .tool-btn, .filter-select { flex:1; min-width:120px; }
         }
 
+        .menu-toggle{position:fixed;top:18px;left:18px;z-index:1200;width:46px;height:46px;border:0;border-radius:12px;background:#003791;color:#fff;font-size:22px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+        .sidebar{position:fixed;left:0;top:0;bottom:0;width:300px;background:#fff;z-index:1100;transform:translateX(-105%);transition:transform .25s ease;box-shadow:8px 0 30px rgba(0,0,0,.2);padding:22px;overflow:auto}
+        .sidebar.open{transform:translateX(0)} .sidebar h2{color:#003791;margin:8px 0 22px}.sidebar-section{margin:18px 0;padding-top:15px;border-top:1px solid #e5e7eb}
+        .side-btn{display:block;width:100%;text-align:left;border:0;background:#f3f6fb;color:#17335f;padding:12px 14px;border-radius:10px;margin:7px 0;cursor:pointer;font-weight:600}
+        .side-btn:hover{background:#e1eaff}.side-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1050;display:none}.side-overlay.show{display:block}
+        .guide-content{line-height:1.55}.guide-content pre{white-space:pre-wrap;background:#111827;color:#e5e7eb;padding:12px;border-radius:10px;font-size:12px;overflow:auto}.guide-content h3{margin:14px 0 7px;color:#003791}
+        body.dark .sidebar{background:#171b24;color:#eee}.dark .sidebar h2,.dark .guide-content h3{color:#69a8ff}.dark .side-btn{background:#252e3c;color:#eee}.dark .sidebar-section{border-color:#303846}
+        @media(max-width:768px){.sidebar{width:min(300px,88vw)}.menu-toggle{top:10px;left:10px}}
 </style>
 </head>
-<body>
+<body><button class="menu-toggle" onclick="toggleSidebar()" aria-label="Menu">☰</button>
+<div class="side-overlay" id="sideOverlay" onclick="toggleSidebar(false)"></div>
+<aside class="sidebar" id="sidebar">
+  <h2>🎮 <span data-i18n="menuTitle">Menu</span></h2>
+  <button class="side-btn" onclick="toggleFilters();toggleSidebar(false)">⚙️ <span data-i18n="filters">Filtros</span></button>
+  <button class="side-btn" onclick="showFavorites();toggleSidebar(false)">⭐ <span data-i18n="favorites">Favoritos</span></button>
+  <button class="side-btn" onclick="showHistory();toggleSidebar(false)">🕘 <span data-i18n="history">Histórico</span></button>
+  <button class="side-btn" onclick="toggleTheme();toggleSidebar(false)">🌙 <span data-i18n="theme">Tema</span></button>
+  <button class="side-btn" onclick="document.getElementById('jsonImport').click();toggleSidebar(false)">📥 <span data-i18n="import">Importar JSON</span></button>
+  <button class="side-btn" onclick="exportLibraries();toggleSidebar(false)">📤 <span data-i18n="export">Exportar minhas bibliotecas</span></button>
+  <button class="side-btn" onclick="showGuide();toggleSidebar(false)">📖 <span data-i18n="guide">Guia do site</span></button>
+  <div class="sidebar-section">
+    <strong>🌐 <span data-i18n="language">Idioma</span></strong>
+    <button class="side-btn" onclick="setLanguage('pt')">🇧🇷 Português</button>
+    <button class="side-btn" onclick="setLanguage('en')">🇺🇸 English</button>
+  </div>
+</aside>
     <div class="container">
         <header>
             <h1>🎮 PS4 Games Complete Database</h1>
@@ -329,13 +353,6 @@
         <div class="search-container">
             <input type="text" id="searchInput" placeholder="🔍 Search for games... (e.g., 'Batman', 'Final Fantasy', 'Call of Duty')" onkeyup="searchGames()">
             <div class="search-info" id="searchInfo">Loading games database...</div>
-            <div class="toolbar">
-                <button class="tool-btn" onclick="toggleFilters()">⚙️ Filtros</button>
-                <button class="tool-btn" onclick="showFavorites()">⭐ Favoritos</button>
-                <button class="tool-btn" onclick="showHistory()">🕘 Histórico</button>
-                <button class="tool-btn" onclick="toggleTheme()">🌙 Tema</button>
-                <button class="tool-btn" onclick="resetView()">↺ Limpar</button><button class="tool-btn" onclick="document.getElementById('jsonImport').click()">📥 Importar JSON</button><button class="tool-btn" onclick="exportLibraries()">📤 Exportar minhas bibliotecas</button><input type="file" id="jsonImport" accept=".json,application/json" multiple hidden onchange="importJSONFiles(event)">
-            </div>
             <div class="filter-panel" id="filterPanel">
                 <select id="typeFilter" onchange="applyFilters()">
                     <option value="all">Todos</option>
@@ -360,9 +377,42 @@
         </footer>
     </div>
     
-    <div class="scroll-top" id="scrollTop" onclick="scrollToTop()">↑</div><div class="modal" id="detailModal" onclick="closeDetails(event)"><div class="modal-card"><button class="modal-close" onclick="closeDetails()">×</button><h2 class="detail-title" id="detailTitle">Jogo</h2><div id="detailCover"></div><div id="detailBody"></div></div></div>
+    <div class="scroll-top" id="scrollTop" onclick="scrollToTop()">↑</div><div class="modal" id="guideModal" onclick="closeGuide(event)"><div class="modal-card"><button class="modal-close" onclick="closeGuide()">×</button><h2 class="detail-title" data-i18n="guideTitle">📖 Guia do site</h2><div class="guide-content" id="guideContent"></div></div></div><div class="modal" id="detailModal" onclick="closeDetails(event)"><div class="modal-card"><button class="modal-close" onclick="closeDetails()">×</button><h2 class="detail-title" id="detailTitle">Jogo</h2><div id="detailCover"></div><div id="detailBody"></div></div></div>
     
     <script>
+const I18N={pt:{menuTitle:'Menu',filters:'Filtros',favorites:'Favoritos',history:'Histórico',theme:'Tema',import:'Importar JSON',export:'Exportar minhas bibliotecas',guide:'Guia do site',language:'Idioma',guideTitle:'📖 Guia do site',search:'🔍 Pesquisar jogos...',loading:'Carregando biblioteca...',guideHtml:'<h3>Como usar</h3><p>Pesquise pelo nome do jogo ou abra o menu ☰ para acessar filtros, favoritos, histórico e tema.</p><h3>Importar seu JSON</h3><p>Abra <b>☰ → Importar JSON</b> e selecione seu arquivo. O site reconhece o formato <b>DATA</b> do seu game.json, incluindo URL do PKG, Title ID, região, versão, tamanho, firmware e capa.</p><h3>Exportar</h3><p>Use <b>☰ → Exportar minhas bibliotecas</b> para salvar todas as bibliotecas importadas em um único arquivo de backup. Esse arquivo pode ser importado novamente depois.</p><h3>Modelo de JSON</h3><pre>{
+  "DATA": {
+    "URL_DO_PKG": {
+      "title_id": "CUSA00000",
+      "region": "USA",
+      "name": "Nome do jogo",
+      "version": "01.00",
+      "release": "01-01-2020",
+      "size": 1234567890,
+      "min_fw": "9.00",
+      "cover_url": "https://exemplo.com/capa.png"
+    }
+  }
+}</pre><p>O campo <b>DATA</b> contém a URL do PKG como chave. Os demais campos são metadados opcionais.</p>'},en:{menuTitle:'Menu',filters:'Filters',favorites:'Favorites',history:'History',theme:'Theme',import:'Import JSON',export:'Export my libraries',guide:'Site guide',language:'Language',guideTitle:'📖 Site guide',search:'🔍 Search games...',loading:'Loading library...',guideHtml:'<h3>How to use</h3><p>Search by game name or open the ☰ menu for filters, favorites, history and theme.</p><h3>Import your JSON</h3><p>Open <b>☰ → Import JSON</b> and select your file. The site recognizes the <b>DATA</b> format from your game.json, including PKG URL, Title ID, region, version, size, firmware and cover.</p><h3>Export</h3><p>Use <b>☰ → Export my libraries</b> to save all imported libraries into one backup file. You can import that backup again later.</p><h3>JSON template</h3><pre>{
+  "DATA": {
+    "PKG_URL": {
+      "title_id": "CUSA00000",
+      "region": "USA",
+      "name": "Game name",
+      "version": "01.00",
+      "release": "01-01-2020",
+      "size": 1234567890,
+      "min_fw": "9.00",
+      "cover_url": "https://example.com/cover.png"
+    }
+  }
+}</pre><p>The <b>DATA</b> object uses the PKG URL as its key. The other fields are optional metadata.</p>'}};
+function toggleSidebar(force){const s=document.getElementById('sidebar'),o=document.getElementById('sideOverlay');const open=force===undefined?!s.classList.contains('open'):force;s.classList.toggle('open',open);o.classList.toggle('show',open);}
+function showGuide(){const lang=localStorage.getItem('ps4db_lang')||'pt';document.getElementById('guideContent').innerHTML=I18N[lang].guideHtml;document.getElementById('guideModal').classList.add('show');}
+function closeGuide(e){if(!e||e.target===document.getElementById('guideModal'))document.getElementById('guideModal').classList.remove('show');}
+function setLanguage(lang){localStorage.setItem('ps4db_lang',lang);const t=I18N[lang];document.querySelectorAll('[data-i18n]').forEach(el=>el.textContent=t[el.dataset.i18n]||el.textContent);document.getElementById('searchInput').placeholder=t.search;document.querySelector('.loading')?.replaceChildren(document.createTextNode(t.loading));if(document.getElementById('guideModal').classList.contains('show'))showGuide();}
+setLanguage(localStorage.getItem('ps4db_lang')||'pt');
+
 let allGames = [];
 let importedLibraries = JSON.parse(localStorage.getItem('ps4db_libraries') || '[]');
 let activeSource = 'all';
