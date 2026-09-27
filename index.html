@@ -275,7 +275,7 @@
         .alpha-nav { display:flex; flex-wrap:wrap; gap:6px; padding:15px 30px; background:#fff; border-bottom:1px solid #eee; }
         .alpha-nav button { border:0; background:#eef3ff; color:#003791; border-radius:7px; padding:7px 10px; cursor:pointer; font-weight:600; }
         .alpha-nav button:hover { background:#003791; color:white; }
-        .game-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+        .game-cover { width:90px;height:120px;object-fit:cover;border-radius:8px;float:right;margin-left:15px; } .detail-cover{width:180px;max-height:250px;object-fit:cover;display:block;margin:0 auto 18px;border-radius:10px;} .library-bar{padding:12px 30px;background:#f1f5ff;border-bottom:1px solid #dde5f5;display:flex;flex-wrap:wrap;gap:8px;align-items:center}.library-chip{border:1px solid #003791;background:white;color:#003791;padding:8px 12px;border-radius:20px;cursor:pointer}.library-chip.active{background:#003791;color:white}.game-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
         .favorite-btn { border:0; background:#fff3cd; color:#8a6500; padding:7px 10px; border-radius:7px; cursor:pointer; }
         .favorite-btn.saved { background:#003791; color:white; }
         .game-item.hidden { display:none; }
@@ -334,7 +334,7 @@
                 <button class="tool-btn" onclick="showFavorites()">⭐ Favoritos</button>
                 <button class="tool-btn" onclick="showHistory()">🕘 Histórico</button>
                 <button class="tool-btn" onclick="toggleTheme()">🌙 Tema</button>
-                <button class="tool-btn" onclick="resetView()">↺ Limpar</button>
+                <button class="tool-btn" onclick="resetView()">↺ Limpar</button><button class="tool-btn" onclick="document.getElementById('jsonImport').click()">📥 Importar JSON</button><button class="tool-btn" onclick="exportLibraries()">📤 Exportar minhas bibliotecas</button><input type="file" id="jsonImport" accept=".json,application/json" multiple hidden onchange="importJSONFiles(event)">
             </div>
             <div class="filter-panel" id="filterPanel">
                 <select id="typeFilter" onchange="applyFilters()">
@@ -348,11 +348,7 @@
                     <option value="0">Sem links</option>
                     <option value="1">1+ links</option>
                     <option value="3">3+ links</option>
-                </select>
-            </div>
-        </div>
-        
-        <div class="alpha-nav" id="alphaNav"></div>
+                </select><select id="regionFilter" onchange="applyFilters()"><option value="all">Todas as regiões</option></select><select id="sourceFilter" onchange="applyFilters()"><option value="all">Todas as fontes</option><option value="main">Biblioteca principal</option></select></div></div><div id="libraryBar" class="library-bar"></div><div class="alpha-nav" id="alphaNav"></div>
         <div class="games-container" id="gamesContainer">
             <div class="loading">Loading 17,065 games with download links...</div>
         </div>
@@ -364,10 +360,12 @@
         </footer>
     </div>
     
-    <div class="scroll-top" id="scrollTop" onclick="scrollToTop()">↑</div>
+    <div class="scroll-top" id="scrollTop" onclick="scrollToTop()">↑</div><div class="modal" id="detailModal" onclick="closeDetails(event)"><div class="modal-card"><button class="modal-close" onclick="closeDetails()">×</button><h2 class="detail-title" id="detailTitle">Jogo</h2><div id="detailCover"></div><div id="detailBody"></div></div></div>
     
     <script>
 let allGames = [];
+let importedLibraries = JSON.parse(localStorage.getItem('ps4db_libraries') || '[]');
+let activeSource = 'all';
 let filteredGames = [];
 let renderedCount = 0;
 let currentMode = 'all';
@@ -383,7 +381,9 @@ async function loadGames() {
   try {
     const response = await fetch('./ps4_games_expanded.json', { cache:'no-cache' });
     if (!response.ok) throw new Error('HTTP ' + response.status);
-    allGames = await response.json();
+    const main = await response.json();
+    allGames = main.map(normalizeMainGame);
+    rebuildLibraryBar(); rebuildRegionFilter();
     filteredGames = allGames;
     buildAlphaNav();
     updateStats();
@@ -395,6 +395,15 @@ async function loadGames() {
   }
 }
 
+function normalizeMainGame(g){return {...g,_source:'main',_sourceName:'Biblioteca principal',region:g.region||'',version:g.version||'',release:g.release||'',size:Number(g.size||0),min_fw:g.min_fw||'',cover_url:g.cover_url||'',description:g.description||''};}
+function normalizeImportedEntry(url,item,source){const r=item||{},l=r.download_links||{};const pkg=url?[url]:(l.pkg||[]);return {name:r.name||r.title||r.game_name||'Jogo sem nome',page_url:r.page_url||'',download_links:{pkg:pkg,mediafire:l.mediafire||[], '1file':l['1file']||[],other:l.other||[]},total_links:Number(r.total_links||0)||[...pkg,...(l.mediafire||[]),...(l['1file']||[]),...(l.other||[])].filter(Boolean).length,title_id:r.title_id||'',region:r.region||'',version:r.version||'',release:r.release||'',size:Number(r.size||0),min_fw:r.min_fw||'',cover_url:r.cover_url||'',description:r.description||'',_source:source,_sourceName:source};}
+function parseImportedJSON(data,source){const out=[];if(data&&data.DATA){Object.entries(data.DATA).forEach(([url,item])=>out.push(normalizeImportedEntry(url,item,source)));}else if(Array.isArray(data)){data.forEach(x=>out.push(normalizeImportedEntry(x.url||x.pkg_url||'',x,source)));}else if(data&&Array.isArray(data.games)){data.games.forEach(x=>out.push(normalizeImportedEntry(x.url||x.pkg_url||'',x,source)));}return out;}
+function rebuildAllGames(){const imported=importedLibraries.flatMap(x=>x.games||[]);allGames=[...allGames.filter(x=>x._source==='main'),...imported];rebuildLibraryBar();rebuildRegionFilter();updateStats();}
+function rebuildLibraryBar(){const bar=document.getElementById('libraryBar');if(!bar)return;bar.innerHTML='<strong>Bibliotecas:</strong>';[['Todas','all'],['Principal','main']].forEach(x=>{const b=document.createElement('button');b.className='library-chip '+(activeSource===x[1]?'active':'');b.textContent=x[0];b.onclick=()=>{activeSource=x[1];applyFilters();rebuildLibraryBar();};bar.appendChild(b);});importedLibraries.forEach((lib,i)=>{const v='lib:'+i,b=document.createElement('button');b.className='library-chip '+(activeSource===v?'active':'');b.textContent='📁 '+lib.name;b.onclick=()=>{activeSource=v;applyFilters();rebuildLibraryBar();};bar.appendChild(b);});}
+function rebuildRegionFilter(){const s=document.getElementById('regionFilter');if(!s)return;const cur=s.value,rs=[...new Set(allGames.map(x=>x.region).filter(Boolean))].sort();s.innerHTML='<option value="all">Todas as regiões</option>'+rs.map(x=>'<option value="'+x.replace(/"/g,'&quot;')+'">'+x+'</option>').join('');if(rs.includes(cur))s.value=cur;}
+async function importJSONFiles(e){for(const file of [...e.target.files]){try{const games=parseImportedJSON(JSON.parse(await file.text()),file.name);if(!games.length){alert(file.name+': nenhum jogo reconhecido.');continue;}importedLibraries=importedLibraries.filter(x=>x.name!==file.name);importedLibraries.push({name:file.name,games});}catch(err){alert('Não foi possível importar '+file.name+': JSON inválido.');}}localStorage.setItem('ps4db_libraries',JSON.stringify(importedLibraries));rebuildAllGames();filteredGames=allGames;renderedCount=0;renderBatch();e.target.value='';}
+function exportLibraries(){if(!importedLibraries.length){alert('Nenhuma biblioteca importada para exportar.');return;}const blob=new Blob([JSON.stringify({version:1,exported_at:new Date().toISOString(),libraries:importedLibraries},null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='minhas-bibliotecas-ps4.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+function formatSize(b){return b?(b/1073741824).toFixed(2)+' GB':'';}
 function gameType(game) {
   const n=(game.name||'').toLowerCase();
   if (/\b(dlc|add[- ]?on|expansion|season pass|bonus)\b/.test(n)) return 'dlc';
@@ -438,6 +447,7 @@ function renderBatch(start=renderedCount) {
 
 function createGameCard(game) {
   const div=document.createElement('div'); div.className='game-item';
+  if(game.cover_url){const img=document.createElement('img');img.className='game-cover';img.src=game.cover_url;img.alt='Capa de '+game.name;img.loading='lazy';div.appendChild(img);}
   const title=document.createElement('div'); title.className='game-title'; title.textContent=game.name;
   div.appendChild(title);
   const links=document.createElement('div'); links.className='download-links';
@@ -449,7 +459,7 @@ function createGameCard(game) {
   });
   add(game.download_links?.mediafire,'btn-mediafire','Mediafire');
   add(game.download_links?.['1file'],'btn-1file','1File');
-  add(game.download_links?.other,'btn-other','Mirror');
+  add(game.download_links?.other,'btn-other','Mirror'); add(game.download_links?.pkg,'btn-other','PKG');
   const page=document.createElement('a'); page.href=game.page_url||'#'; page.className='download-btn btn-page';
   page.textContent='Ver página'; page.target='_blank'; links.appendChild(page);
   div.appendChild(links);
@@ -463,7 +473,7 @@ function createGameCard(game) {
   actions.append(fav,details); div.appendChild(actions);
 
   const count=document.createElement('div'); count.className='link-count';
-  count.textContent=`${game.total_links||0} download links • ${gameType(game).toUpperCase()}`;
+  count.textContent=(game.total_links||0)+' links • '+gameType(game).toUpperCase()+' • '+[game.region,game.version?'v'+game.version:'',formatSize(game.size),game.min_fw?'FW '+game.min_fw:'',game._sourceName].filter(Boolean).join(' • ');
   div.appendChild(count);
   return div;
 }
@@ -472,12 +482,16 @@ function applyFilters() {
   const q=(document.getElementById('searchInput').value||'').trim().toUpperCase();
   const type=document.getElementById('typeFilter').value;
   const min=document.getElementById('linksFilter').value;
+  const region=document.getElementById('regionFilter').value;
   filteredGames=allGames.filter(g=>{
     const matchesQ=!q||(g.name||'').toUpperCase().includes(q);
     const matchesType=type==='all'||gameType(g)===type;
     const links=Number(g.total_links||0);
     const matchesLinks=min==='all'||(min==='0'?links===0:links>=Number(min));
-    return matchesQ&&matchesType&&matchesLinks;
+    const matchesRegion=region==='all'||g.region===region;
+    const idx=activeSource.startsWith('lib:')?Number(activeSource.slice(4)):-1;
+    const matchesSource=activeSource==='all'||g._source===activeSource||(idx>=0&&g._source===importedLibraries[idx]?.name);
+    return matchesQ&&matchesType&&matchesLinks&&matchesRegion&&matchesSource;
   });
   renderedCount=0; renderBatch(); 
 }
@@ -503,21 +517,11 @@ function saveSearch(q){
 }
 function resetView(){
   document.getElementById('searchInput').value='';
-  document.getElementById('typeFilter').value='all'; document.getElementById('linksFilter').value='all';
+  document.getElementById('typeFilter').value='all'; document.getElementById('linksFilter').value='all'; document.getElementById('regionFilter').value='all'; activeSource='all';
   currentMode='all'; filteredGames=allGames; renderedCount=0; renderBatch();
 }
-function showDetails(game){
-  document.getElementById('detailTitle').textContent=game.name||'Jogo';
-  const links=[...(game.download_links?.mediafire||[]),...(game.download_links?.['1file']||[]),...(game.download_links?.other||[])];
-  document.getElementById('detailBody').innerHTML=
-    `<div class="detail-row"><b>Tipo:</b> ${gameType(game).toUpperCase()}</div>
-     <div class="detail-row"><b>Links:</b> ${links.length}</div>
-     <div class="detail-row"><b>Página:</b> ${game.page_url||'—'}</div>
-     <div class="detail-row"><b>MediaFire:</b> ${(game.download_links?.mediafire||[]).length}</div>
-     <div class="detail-row"><b>1File:</b> ${(game.download_links?.['1file']||[]).length}</div>
-     <div class="detail-row"><b>Outros:</b> ${(game.download_links?.other||[]).length}</div>`;
-  document.getElementById('detailModal').classList.add('show');
-}
+function showDetails(game){document.getElementById('detailTitle').textContent=game.name||'Jogo';document.getElementById('detailCover').innerHTML=game.cover_url?'<img class="detail-cover" src="'+game.cover_url+'" alt="Capa">':'';const rows=[['Tipo',gameType(game).toUpperCase()],['Fonte',game._sourceName||'Biblioteca principal'],['Title ID',game.title_id||'—'],['Região',game.region||'—'],['Versão',game.version||'—'],['Lançamento',game.release||'—'],['Tamanho',formatSize(game.size)||'—'],['Firmware mínimo',game.min_fw||'—'],['Descrição',game.description||'Não disponível neste JSON.']];document.getElementById('detailBody').innerHTML=rows.map(x=>'<div class="detail-row"><b>'+x[0]+':</b> '+String(x[1]).replace(/</g,'&lt;')+'</div>').join('');document.getElementById('detailModal').classList.add('show');}
+
 function closeDetails(e){ if(!e||e.target===document.getElementById('detailModal')) document.getElementById('detailModal').classList.remove('show'); }
 function toggleTheme(){
   document.body.classList.toggle('dark');
