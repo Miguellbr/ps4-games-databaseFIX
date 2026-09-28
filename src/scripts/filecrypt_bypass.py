@@ -128,6 +128,37 @@ class FileCryptBypass:
         ))
 
     @staticmethod
+    def _detect_cloudflare_challenge(html: str) -> Optional[Dict[str, Any]]:
+        """Detecta a página de Challenge do Cloudflare sem tentar contorná-la."""
+        text = html or ''
+        lower = text.lower()
+        signals = []
+
+        if '<title>just a moment...</title>' in lower:
+            signals.append('just_a_moment')
+        if 'window._cf_chl_opt' in lower:
+            signals.append('cf_chl_opt')
+        if '/cdn-cgi/challenge-platform/' in lower:
+            signals.append('challenge_platform')
+        if 'challenges.cloudflare.com' in lower:
+            signals.append('challenges.cloudflare.com')
+
+        if len(signals) < 2:
+            return None
+
+        ray = None
+        match = re.search(r"cRay:\s*['"]([^'"]+)", text, re.IGNORECASE)
+        if match:
+            ray = match.group(1)
+
+        return {
+            'provider': 'cloudflare',
+            'type': 'managed_challenge',
+            'signals': signals,
+            'ray': ray,
+        }
+
+    @staticmethod
     def _find_final_url(response: requests.Response) -> Optional[str]:
         """Retorna um destino final somente quando a requisição já o revelou."""
         url = response.url
@@ -199,6 +230,22 @@ class FileCryptBypass:
             return BypassResult(
                 success=True,
                 final_url=direct,
+                cookies=dict(self.session.cookies),
+                evidence_log=self.evidence_log
+            )
+
+        # Identifica explicitamente o Cloudflare Challenge observado.
+        cloudflare = self._detect_cloudflare_challenge(html)
+        if cloudflare:
+            self._log_evidence('cloudflare_challenge', cloudflare)
+            return BypassResult(
+                success=False,
+                error_message='needs_verification: Cloudflare Challenge detectado',
+                response_data={
+                    'status_code': response.status_code,
+                    'url': response.url,
+                    'challenge': cloudflare
+                },
                 cookies=dict(self.session.cookies),
                 evidence_log=self.evidence_log
             )
