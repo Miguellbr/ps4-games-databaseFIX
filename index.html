@@ -66,15 +66,9 @@ footer{padding:25px clamp(18px,4vw,48px);text-align:center;color:var(--muted);bo
 }
 
 /* Indicadores visuais */
-.download-btn[href*="filecrypt"] {
-    position: relative;
-}
-
-.download-btn[href*="filecrypt"]::after {
-    content: '🔒';
-    margin-left: 5px;
-    font-size: 0.8em;
-}
+/* O estado FileCrypt é exibido pelo DownloadResolver.
+   Não usar pseudo-elemento baseado no href: um link pode apontar para
+   FileCrypt durante a resolução e acabar parecendo um MediaFire bloqueado. */
 </style>
 </head>
 <body><button class="menu-toggle" id="menuToggle" type="button" onclick="toggleSidebar()" aria-label="Menu"><span data-icon="menu"></span></button>
