@@ -108,8 +108,9 @@ async function one(id) {
 
 module.exports = async function handler(req, res) {
   try {
-    const raw = new URL(req.url, 'https://ps4-games-database-fix.vercel.app')
-      .searchParams.get('ids') || '';
+    const raw = (req.query && req.query.ids)
+      || new URL(req.url || '/', 'https://ps4-games-database-fix.vercel.app').searchParams.get('ids')
+      || '';
 
     const ids = [...new Set(
       raw.split(',').map(normalizeId).filter(Boolean)
