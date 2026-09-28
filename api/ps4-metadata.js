@@ -78,20 +78,68 @@ function normalizeName(value) {
   return String(value || '').replace(/[®™]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
 }
 
-function findMatchingCusa(node, wantedName) {
-  const wanted = normalizeName(wantedName), seen = new Set();
-  function walk(value, depth) {
-    if (depth > 7 || value == null) return '';
-    if (typeof value === 'string') return normalizeId(value);
-    if (typeof value !== 'object' || seen.has(value)) return '';
-    seen.add(value);
-    const strings = Object.values(value).filter(v => typeof v === 'string');
-    const hasWanted = strings.some(v => { const n=normalizeName(v); return n===wanted || n.includes(wanted) || wanted.includes(n); });
-    if (hasWanted) { for (const s of strings) { const id=normalizeId(s); if(id)return id; } }
-    for (const child of Object.values(value)) { const id=walk(child,depth+1); if(id)return id; }
-    return '';
+function nameScore(value, wanted) {
+  const a = normalizeName(value);
+  const b = normalizeName(wanted);
+  if (!a || !b) return 0;
+  if (a === b) return 100;
+  if (a.includes(b) || b.includes(a)) return 80;
+  const aw = new Set(a.split(/\\s+/).filter(Boolean));
+  const bw = new Set(b.split(/\\s+/).filter(Boolean));
+  const common = [...aw].filter(x => bw.has(x)).length;
+  if (!common) return 0;
+  return Math.round(50 * common / Math.max(aw.size, bw.size));
+}
+
+function collectCusas(node, out = new Set(), depth = 0, seen = new Set()) {
+  if (depth > 10 || node == null) return out;
+  if (typeof node === 'string') {
+    const id = normalizeId(node);
+    if (id) out.add(id);
+    return out;
   }
-  return walk(node,0);
+  if (typeof node !== 'object' || seen.has(node)) return out;
+  seen.add(node);
+  for (const [key, value] of Object.entries(node)) {
+    const keyName = String(key).toLowerCase();
+    if (typeof value === 'string') {
+      const id = normalizeId(value);
+      if (id || /cusa|title.?id|product.?id|content.?id|concept.?id|sku/i.test(keyName)) {
+        if (id) out.add(id);
+      }
+    }
+    collectCusas(value, out, depth + 1, seen);
+  }
+  return out;
+}
+
+function findMatchingCusa(node, wantedName) {
+  let best = { id: '', score: 0 };
+  const seen = new Set();
+
+  function walk(value, depth) {
+    if (depth > 10 || value == null) return;
+    if (typeof value !== 'object' || seen.has(value)) return;
+    seen.add(value);
+
+    const candidates = collectCusas(value, new Set(), 0, new Set());
+    const strings = Object.values(value).filter(v => typeof v === 'string');
+    let score = 0;
+    for (const s of strings) score = Math.max(score, nameScore(s, wantedName));
+
+    // Prefer a CUSA found in the same result object as the matching title.
+    if (score > 0 && candidates.size) {
+      for (const id of candidates) {
+        const bonus = score === 100 ? 10 : 0;
+        if (score + bonus > best.score) best = { id, score: score + bonus };
+      }
+    }
+
+    for (const child of Object.values(value)) walk(child, depth + 1);
+  }
+
+  walk(node, 0);
+  return best.id;
 }
 
 async function resolveName(name) {
