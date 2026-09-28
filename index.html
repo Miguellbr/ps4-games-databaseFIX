@@ -337,7 +337,7 @@ async function runMetadataWorker(){
       const byId=new Map((data.games||[]).map(x=>[String(x.title_id||'').toUpperCase(),x]));
       const byName=new Map((data.games||[]).filter(x=>x.requested_name).map(x=>[normalizeMetadataName(x.requested_name),x]));
       for(const game of batch){
-        const id=getCusaId(game),name=normalizeMetadataName(game?.name),meta=byId.get(id)||byName.get(name);
+        const id=getCusaId(game),name=normalizeMetadataName(game?.name),meta=byName.get(name)||byId.get(id);
         if(meta)metadataCache.set(metadataKey(game),meta);
         renderMetadata(game,meta);
         if(!meta){
