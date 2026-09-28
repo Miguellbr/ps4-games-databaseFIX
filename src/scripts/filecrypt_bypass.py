@@ -128,7 +128,7 @@ class FileCryptBypass:
             pass
 
         # URLs absolutas encontradas literalmente na resposta.
-        raw_urls = re.findall(r'https?://[^\\s"\\'<>]+', html or '', re.IGNORECASE)
+        raw_urls = re.findall(r"https?://[^\\s"'<>]+", html or '', re.IGNORECASE)
         urls = []
         seen = set()
         for raw in raw_urls:
