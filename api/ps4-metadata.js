@@ -165,8 +165,15 @@ module.exports = async function handler(req, res) {
     const limitedIds = ids.slice(0, 20);
     if (!limitedIds.length) return res.status(400).json({ games: [], error: 'No valid CUSA IDs or game names' });
     const games = [];
-    for (let i = 0; i < limitedIds.length; i += 4) {
-      const batch = await Promise.all(limitedIds.slice(i, i + 4).map(one));
+    for (const item of resolved) {
+      const meta = await one(item.title_id);
+      if (meta) meta.requested_name = item.name;
+      if (meta) games.push(meta);
+    }
+    const resolvedIds = new Set(resolved.map(x => x.title_id));
+    const remainingIds = limitedIds.filter(id => !resolvedIds.has(id));
+    for (let i = 0; i < remainingIds.length; i += 4) {
+      const batch = await Promise.all(remainingIds.slice(i, i + 4).map(one));
       games.push(...batch);
     }
 
