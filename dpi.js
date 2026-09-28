@@ -44,25 +44,25 @@
       <div class="dpi-card">
         <button class="modal-close" type="button" onclick="closeDpi()">×</button>
         <div class="dpi-title">PS4 Package Installer</div>
-        <div class="dpi-subtitle">Instalador integrado do PS4 Games Database. Ele envia o URL direto do PKG para o serviço de instalação do seu PS4.</div>${!nativeApp ? '<div class="dpi-notice"><b>Recomendado no app:</b> o instalador funciona melhor no APK, porque o app possui o motor DPI nativo e não depende das restrições de rede/CORS do navegador.</div>' : ''}
-        <label class="dpi-label" for="dpiPsIp">IP do PS4</label>
+        <div class="dpi-subtitle">Integrated PS4 Games Database installer. It sends a direct PKG URL to your PS4 installation service.</div>${!nativeApp ? '<div class="dpi-notice"><b>Recommended in the app:</b> the installer works better in the APK because it includes the native DPI engine and avoids browser network/CORS restrictions.</div>' : ''}
+        <label class="dpi-label" for="dpiPsIp">PS4 IP address</label>
         <input class="dpi-input" id="dpiPsIp" inputmode="decimal" placeholder="192.168.1.100">
-        <label class="dpi-label" for="dpiPkgUrl">URL direta do PKG</label>
+        <label class="dpi-label" for="dpiPkgUrl">Direct PKG URL</label>
         <input class="dpi-input" id="dpiPkgUrl" placeholder="https://servidor.exemplo/jogo.pkg">
-        <label class="dpi-label"><input id="dpiSegmented" type="checkbox"> Usar modo preparado/segmentado quando suportado</label>
+        <label class="dpi-label"><input id="dpiSegmented" type="checkbox"> Use prepared/segmented mode when supported</label>
         <div class="dpi-actions">
-          <button class="dpi-action primary" id="dpiSendBtn" type="button" onclick="sendDpiPackage()">Enviar para o PS4</button>
-          <button class="dpi-action" type="button" onclick="closeDpi()">Fechar</button>
+          <button class="dpi-action primary" id="dpiSendBtn" type="button" onclick="sendDpiPackage()">Send to PS4</button>
+          <button class="dpi-action" type="button" onclick="closeDpi()">Close</button>
         </div>
-        <div class="dpi-status" id="dpiStatus">Aguardando um URL de PKG.</div>
-        <div class="dpi-native" id="dpiNative"></div><div class="credits-card" style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);font-size:11px"><b>Créditos do DPI</b><br>Integração baseada no projeto <a href="https://github.com/marcussacana/DirectPackageInstaller" target="_blank" rel="noopener" style="color:var(--accent2)">DirectPackageInstaller</a>, de <b>marcussacana</b>. O projeto original é separado; este app implementa o fluxo integrado.</div>
+        <div class="dpi-status" id="dpiStatus">Waiting for a PKG URL.</div>
+        <div class="dpi-native" id="dpiNative"></div><div class="credits-card" style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);font-size:11px"><b>DPI credits</b><br>Integration based on the <a href="https://github.com/marcussacana/DirectPackageInstaller" target="_blank" rel="noopener" style="color:var(--accent2)">DirectPackageInstaller</a>, by <b>marcussacana</b>. The original project is separate; this app implements its own integrated flow.</div>
       </div>`;
     document.body.appendChild(modal);
     document.getElementById('dpiPsIp').value = settings.psIp || '';
     document.getElementById('dpiSegmented').checked = !!settings.segmented;
     document.getElementById('dpiNative').textContent = nativeApp
-      ? '✓ Motor DPI nativo ativo no APK.'
-      : 'Modo navegador: a comunicação direta pode ser bloqueada pelo CORS do navegador.';
+      ? '✓ Native DPI engine active in the APK.'
+      : 'Browser mode: direct communication may be blocked by browser CORS.';
   }
 
   window.openDpi = function(url='') {
@@ -109,21 +109,21 @@
     const button = document.getElementById('dpiSendBtn');
     if (!psIp || !/^https?:\/\//i.test(url)) {
       status.className='dpi-status error';
-      status.textContent='Informe um IP válido do PS4 e um URL HTTP/HTTPS direto para um PKG.';
+      status.textContent='Enter a valid PS4 IP address and a direct HTTP/HTTPS PKG URL.';
       return;
     }
     saveSettings();
     button.disabled=true;
     status.className='dpi-status';
-    status.textContent='Testando o instalador do PS4…';
+    status.textContent='Testing the PS4 installer…';
     try {
       const result = nativeApp ? await sendNative(psIp,url) : await sendBrowser(psIp,url);
-      if (!result.ok) throw new Error(result.error || result.raw || 'O PS4 recusou a solicitação.');
+      if (!result.ok) throw new Error(result.error || result.raw || 'The PS4 rejected the request.');
       status.className='dpi-status ok';
-      status.textContent=`✓ PKG enviado pelo ${result.method}. O PS4 deve iniciar o download/instalação.`;
+      status.textContent=`✓ PKG enviado pelo ${result.method}. The PS4 should start downloading/installing the package.`;
     } catch (e) {
       status.className='dpi-status error';
-      status.textContent='Falha ao enviar PKG.\n' + (e?.message || e);
+      status.textContent='Failed to send PKG.\n' + (e?.message || e);
     } finally {
       button.disabled=false;
     }
@@ -176,7 +176,7 @@
       b.id='dpiMenuButton';
       b.className='side-btn';
       b.type='button';
-      b.textContent='Instalador de PKG';
+      b.innerHTML='<span data-icon="package"></span><span data-i18n="dpiMenu">Instalador de PKG</span>';
       b.onclick=()=>{ openDpi(); if(typeof toggleSidebar==='function') toggleSidebar(false); };
       const guide = [...sidebar.querySelectorAll('.side-btn')].find(x => /Guia do site|Site guide/.test(x.textContent||''));
       if (guide) guide.parentNode.insertBefore(b, guide);
@@ -187,6 +187,8 @@
   function init() {
     setupGuide();
     setupMenu();
+    updateDpiMenuLanguage();
+    window.addEventListener('ps4db-language-changed',updateDpiMenuLanguage);
     setupCardsObserver();
   }
 
