@@ -277,8 +277,13 @@ function cleanStoreDescription(value){
   const decoder=document.createElement('textarea');
   decoder.innerHTML=s;
   s=decoder.value;
-  s=s.replace(/<\s*br\s*\/?\s*>/gi,'\n').replace(/<\s*\/p\s*>/gi,'\n\n').replace(/<\s*p\b[^>]*>/gi,'').replace(/<[^>]*>/g,'');
-  s=s.replace(/Para jogar esse jogo no PS5,\s*talvez seja preciso atualizar seu sistema com o software do sistema mais recente\.\s*É possível jogar esse jogo no PS5,\s*mas alguns recursos disponíveis no PS4 podem estar ausentes\.\s*Consulte\s*PlayStation\.com\/bc\s*para obter mais detalhes\.?/gi,'');
+  s=s.replace(/<\s*br\s*\/?\s*>/gi,'\n')
+    .replace(/<\s*\/p\s*>/gi,'\n\n')
+    .replace(/<\s*p\b[^>]*>/gi,'')
+    .replace(/<[^>]*>/g,'');
+  s=s.replace(/(?:Para jogar este jogo|Para jogar esse jogo) no PS5[\s\S]*?PlayStation\.com\/bc[\s\S]*?(?:obter mais detalhes\.?|mais detalhes\.?)/gi,'');
+  s=s.replace(/(?:To play this game on PS5|To play this game on the PS5)[\s\S]*?PlayStation\.com\/bc[\s\S]*?(?:for more details\.?|more details\.?)/gi,'');
+  s=s.replace(/<\/?b>/gi,'');
   s=s.replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n');
   return s.trim();
 }
@@ -430,7 +435,43 @@ function resetView(){
   document.getElementById('typeFilter').value='all'; document.getElementById('linksFilter').value='all'; document.getElementById('regionFilter').value='all'; activeSource='all';
   currentMode='all'; filteredGames=allGames; renderedCount=0; renderBatch();
 }
-function showDetails(game){document.getElementById('detailTitle').textContent=game.name||'Jogo';document.getElementById('detailCover').innerHTML=game.cover_url?'<img class="detail-cover" src="'+game.cover_url+'" alt="Capa de '+String(game.name||'Jogo').replace(/</g,'&lt;')+'">':'';const rows=[['Tipo',gameType(game).toUpperCase()],['Fonte',game._sourceName||'Biblioteca principal'],['Title ID',game.title_id||'—'],['Região',game.region||'—'],['Versão',game.version||'—'],['Lançamento',game.release||'—'],['Tamanho',formatSize(game.size)||'—'],['Firmware mínimo',game.min_fw||'—'],['Descrição — English',game.description_en||game.description||'Não disponível.'],['Descrição — Português',game.description_pt||'Não disponível.']];document.getElementById('detailBody').innerHTML=rows.map(x=>'<div class="detail-row"><b>'+x[0]+':</b> '+String(x[1]).replace(/</g,'&lt;')+'</div>').join('');document.getElementById('detailModal').classList.add('show');}
+function showDetails(game){
+  document.getElementById('detailTitle').textContent=game.name||'Jogo';
+  const cover=document.getElementById('detailCover');
+  cover.textContent='';
+  if(game.cover_url){
+    const img=document.createElement('img');
+    img.className='detail-cover';
+    img.src=game.cover_url;
+    img.alt='Capa de '+(game.name||'Jogo');
+    img.onerror=()=>img.remove();
+    cover.appendChild(img);
+  }
+  const rows=[
+    ['Tipo',gameType(game).toUpperCase()],
+    ['Fonte',game._sourceName||'Biblioteca principal'],
+    ['Title ID',game.title_id||'—'],
+    ['Região',game.region||'—'],
+    ['Versão',game.version||'—'],
+    ['Lançamento',game.release||'—'],
+    ['Tamanho',formatSize(game.size)||'—'],
+    ['Firmware mínimo',game.min_fw||'—'],
+    ['Descrição — English',cleanStoreDescription(game.description_en||game.description||'Não disponível.')],
+    ['Descrição — Português',cleanStoreDescription(game.description_pt||'Não disponível.')]
+  ];
+  const body=document.getElementById('detailBody');
+  body.textContent='';
+  rows.forEach(([label,value])=>{
+    const row=document.createElement('div');
+    row.className='detail-row';
+    const strong=document.createElement('b');
+    strong.textContent=label+':';
+    row.appendChild(strong);
+    row.appendChild(document.createTextNode(' '+value));
+    body.appendChild(row);
+  });
+  document.getElementById('detailModal').classList.add('show');
+}
 
 function closeDetails(e){ if(!e||e.target===document.getElementById('detailModal')) document.getElementById('detailModal').classList.remove('show'); }
 function toggleTheme(){
