@@ -34,10 +34,18 @@ jobs:
           java-version: '21'
       - name: Install dependencies
         run: npm install
+      - name: Prepare web assets
+        run: |
+          rm -rf www
+          mkdir -p www
+          cp *.html *.js *.json www/
+          if ls *.css >/dev/null 2>&1; then cp *.css www/; fi
       - name: Create Android project
         run: npx cap add android
       - name: Sync Capacitor
         run: npx cap sync android
+      - name: Set APK version code
+        run: sed -i -E 's/versionCode [0-9]+/versionCode ${{ github.run_number }}/' android/app/build.gradle
       - name: Build debug APK
         working-directory: android
         run: ./gradlew assembleDebug
