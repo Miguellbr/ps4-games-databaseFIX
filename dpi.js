@@ -44,7 +44,7 @@
       <div class="dpi-card">
         <button class="modal-close" type="button" onclick="closeDpi()">×</button>
         <div class="dpi-title">PS4 Package Installer</div>
-        <div class="dpi-subtitle">Instalador integrado do PS4 Games Database. Ele envia o URL direto do PKG para o serviço de instalação do seu PS4.</div>
+        <div class="dpi-subtitle">Instalador integrado do PS4 Games Database. Ele envia o URL direto do PKG para o serviço de instalação do seu PS4.</div>${!nativeApp ? '<div class="dpi-notice"><b>Recomendado no app:</b> o instalador funciona melhor no APK, porque o app possui o motor DPI nativo e não depende das restrições de rede/CORS do navegador.</div>' : ''}
         <label class="dpi-label" for="dpiPsIp">IP do PS4</label>
         <input class="dpi-input" id="dpiPsIp" inputmode="decimal" placeholder="192.168.1.100">
         <label class="dpi-label" for="dpiPkgUrl">URL direta do PKG</label>
@@ -55,7 +55,7 @@
           <button class="dpi-action" type="button" onclick="closeDpi()">Fechar</button>
         </div>
         <div class="dpi-status" id="dpiStatus">Aguardando um URL de PKG.</div>
-        <div class="dpi-native" id="dpiNative"></div>
+        <div class="dpi-native" id="dpiNative"></div><div class="credits-card" style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line);font-size:11px"><b>Créditos do DPI</b><br>Integração baseada no projeto <a href="https://github.com/marcussacana/DirectPackageInstaller" target="_blank" rel="noopener" style="color:var(--accent2)">DirectPackageInstaller</a>, de <b>marcussacana</b>. O projeto original é separado; este app implementa o fluxo integrado.</div>
       </div>`;
     document.body.appendChild(modal);
     document.getElementById('dpiPsIp').value = settings.psIp || '';
@@ -138,7 +138,7 @@
     const b = document.createElement('button');
     b.className='tool-btn dpi-card-button';
     b.type='button';
-    b.textContent='Enviar ao PS4';
+    b.innerHTML='<span data-icon="package"></span>Enviar ao PS4'; if(window.refreshAppIcons) window.refreshAppIcons(b);
     b.onclick=()=>openDpi(pkg.href);
     actions.appendChild(b);
   }
