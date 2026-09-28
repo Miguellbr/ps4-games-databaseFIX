@@ -283,10 +283,7 @@ function cleanStoreDescription(value){
   const decoder=document.createElement('textarea');
   decoder.innerHTML=s;
   s=decoder.value;
-  s=s.replace(/<\s*br\s*\/?\s*>/gi,'\n')
-    .replace(/<\s*\/p\s*>/gi,'\n\n')
-    .replace(/<\s*p\b[^>]*>/gi,'')
-    .replace(/<[^>]*>/g,'');
+  s=s.replace(/<\s*br\s*\/?\s*>/gi,'\n').replace(/<\s*\/p\s*>/gi,'\n\n').replace(/<\s*p\b[^>]*>/gi,'').replace(/<[^>]*>/g,'');
   s=s.replace(/(?:Para jogar este jogo|Para jogar esse jogo) no PS5[\s\S]*?PlayStation\.com\/bc[\s\S]*?(?:obter mais detalhes\.?|mais detalhes\.?)/gi,'');
   s=s.replace(/(?:To play this game on PS5|To play this game on the PS5)[\s\S]*?PlayStation\.com\/bc[\s\S]*?(?:for more details\.?|more details\.?)/gi,'');
   s=s.replace(/<\/?b>/gi,'');
@@ -302,11 +299,10 @@ function setDescriptionContent(box,en,pt){
   box.appendChild(document.createTextNode(' '+(pt||'Não disponível')));
 }
 function renderMetadata(game,meta,card=metadataCards.get(game)){
-  if(!meta)return;
+  if(!meta||!card)return;
   Object.assign(game,meta,{title_id:meta.title_id||getCusaId(game)||'',description:game.description||meta.description_en||''});
-  if(!card)return;
   const box=card.querySelector('[data-description-box]');
-  if(box)setDescriptionContent(box,cleanStoreDescription(game.description_en||game.description||''),cleanStoreDescription(game.description_pt||''));
+  if(box)setDescriptionContent(box,cleanStoreDescription(meta.description_en||meta.description||''),cleanStoreDescription(meta.description_pt||''));
   const titleIdBox=card.querySelector('[data-title-id-box]');
   if(titleIdBox)titleIdBox.textContent='Title ID: '+(game.title_id||'—');
   if(meta.cover_url){
@@ -317,49 +313,52 @@ function renderMetadata(game,meta,card=metadataCards.get(game)){
 }
 function queueMetadataGames(games){
   for(const game of games||[]){
+    const card=metadataCards.get(game);
+    if(!card)continue;
     const key=metadataKey(game),id=getCusaId(game);
     if(!key)continue;
     if(id)game.title_id=id;
     const cached=metadataCache.get(key);
-    if(cached){renderMetadata(game,cached);continue;}
+    if(cached){renderMetadata(game,cached,card);continue;}
     if(metadataQueued.has(game))continue;
-    metadataQueued.add(game);metadataQueue.push(game);
+    metadataQueued.add(game);
+    metadataQueue.push({game,card});
   }
   runMetadataWorker();
+}
+async function loadOneGameMetadata(game,card){
+  const id=getCusaId(game);
+  const name=game?.name||'';
+  const params=new URLSearchParams();
+  if(id)params.set('ids',id);
+  if(name)params.set('names',JSON.stringify([name]));
+  const r=await fetch('./api/ps4-metadata?'+params.toString(),{cache:'no-store'});
+  if(!r.ok)throw new Error('metadata HTTP '+r.status);
+  const data=await r.json();
+  const games=Array.isArray(data.games)?data.games:[];
+  const exactId=id&&games.find(x=>String(x.title_id||'').toUpperCase()===String(id).toUpperCase());
+  const exactName=games.find(x=>normalizeMetadataName(x.requested_name)===normalizeMetadataName(name));
+  const meta=exactName||exactId||games[0]||null;
+  if(meta){
+    metadataCache.set(metadataKey(game),meta);
+    renderMetadata(game,meta,card);
+  }else{
+    const box=card.querySelector('[data-description-box]');
+    if(box)setDescriptionContent(box,'Não disponível','Não disponível');
+  }
 }
 async function runMetadataWorker(){
   if(metadataWorkerRunning)return;
   metadataWorkerRunning=true;
   while(metadataQueue.length){
-    const batch=metadataQueue.splice(0,10);
-    const ids=[...new Set(batch.map(getCusaId).filter(Boolean))],names=batch.map(g=>g?.name||'').filter(Boolean);
-    try{
-      const params=new URLSearchParams();
-      if(ids.length)params.set('ids',ids.join(','));
-      if(names.length)params.set('names',JSON.stringify(names));
-      const r=await fetch('./api/ps4-metadata?'+params.toString(),{cache:'no-store'});
-      if(!r.ok)throw new Error('metadata HTTP '+r.status);
-      const data=await r.json();
-      const byId=new Map((data.games||[]).map(x=>[String(x.title_id||'').toUpperCase(),x]));
-      const byName=new Map((data.games||[]).filter(x=>x.requested_name).map(x=>[normalizeMetadataName(x.requested_name),x]));
-      for(const game of batch){
-        const id=getCusaId(game),name=normalizeMetadataName(game?.name),meta=byName.get(name)||byId.get(id);
-        if(meta)metadataCache.set(metadataKey(game),meta);
-        renderMetadata(game,meta);
-        if(!meta){
-          const box=metadataCards.get(game)?.querySelector('[data-description-box]');
-          if(box)setDescriptionContent(box,'Não disponível','Não disponível');
-        }
-        metadataQueued.delete(game);
-      }
-    }catch(err){
-      console.warn('Metadados:',err);
-      batch.forEach(game=>{
-        const box=metadataCards.get(game)?.querySelector('[data-description-box]');
-        if(box)setDescriptionContent(box,'Erro ao carregar','Erro ao carregar');
-        metadataQueued.delete(game);
-      });
+    const item=metadataQueue.shift();
+    try{await loadOneGameMetadata(item.game,item.card);}
+    catch(err){
+      console.warn('Metadados:',item.game?.name,err);
+      const box=item.card?.querySelector('[data-description-box]');
+      if(box)setDescriptionContent(box,'Erro ao carregar','Erro ao carregar');
     }
+    metadataQueued.delete(item.game);
     await new Promise(r=>setTimeout(r,60));
   }
   metadataWorkerRunning=false;
