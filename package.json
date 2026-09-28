@@ -16,5 +16,6 @@
     "@capacitor/cli": "^7.4.4",
     "@capacitor/android": "^7.4.4",
     "typescript": "^5.9.2"
-  }
+  },
+  "_temporaryBuildTrigger": "2026-09-28"
 }
