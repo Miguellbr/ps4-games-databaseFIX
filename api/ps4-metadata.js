@@ -87,7 +87,11 @@ function getCatalogByName() {
       const id = normalizeId(game?.title_id);
       const name = normalizeName(game?.title);
       if (!id || !name) continue;
-      if (!catalogByName.has(name)) catalogByName.set(name, id);
+      const current = catalogByName.get(name);
+      // Prefer the USA release when the catalog has multiple regional CUSAs.
+      if (!current || String(game?.region || '').toUpperCase() === 'USA') {
+        catalogByName.set(name, id);
+      }
     }
   } catch (error) {
     console.warn('[PS4META] catalog load failed', error?.message || error);
