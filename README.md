@@ -1,267 +1,124 @@
-# 🎮 PS4 Games Complete Database
+# 🎮 PS4 Games Database
 
-> **6,001+ PS4 games with 38,690+ direct download links**  
-> Free PKG files for jailbroken PS4 consoles (Firmware 9.00 - 11.00)
+> Catálogo de jogos de PS4 com busca, filtros, informações e links externos.
 
-[![Games](https://img.shields.io/badge/Games-6,001-blue)](https://huggingfacer04.github.io/ps4-games-database/)
-[![Download Links](https://img.shields.io/badge/Download%20Links-38,690-green)](https://huggingfacer04.github.io/ps4-games-database/)
-[![Success Rate](https://img.shields.io/badge/Success%20Rate-100%25-brightgreen)](https://huggingfacer04.github.io/ps4-games-database/)
-[![Built with](https://img.shields.io/badge/Built%20with-Galaxy.ai-purple)](https://galaxy.ai/?via=start-building)
+## 🌐 Acessar
 
----
+**[🚀 Abrir a página online](https://ps4-games-database-fix.vercel.app/)**
 
-## 🌟 Features
+A versão web continua hospedada na Vercel. O aplicativo Android, porém, foi preparado para não depender dela para a interface ou para os metadados locais.
 
-- **6,001 PS4 Games** - Complete database from dlpsgame.com
-- **38,690 Download Links** - Mediafire, 1File, Mega, Google Drive, and more
-- **Real-time Search** - Find any game instantly
-- **Alphabetical Organization** - Browse by letter (A-Z)
-- **Multiple Mirrors** - Each game has multiple download options
-- **Mobile Responsive** - Works on all devices
-- **100% Free** - No registration, no payment, no ads
+## 📱 APK Android
 
----
+**[⬇️ Baixar o APK mais recente](https://github.com/Miguellbr/ps4-games-databaseFIX/releases/latest/download/app-debug.apk)**
 
-## 🚀 Quick Start
+Também é possível encontrar todas as versões na página de **[Releases](https://github.com/Miguellbr/ps4-games-databaseFIX/releases)**.
 
-### Option 1: Use the Live Site
-Visit: **[https://huggingfacer04.github.io/ps4-games-database/](https://huggingfacer04.github.io/ps4-games-database/)**
+> O APK é gerado automaticamente pelo GitHub Actions e publicado como uma Release. A versão inicial é um APK de teste/debug para instalação direta no Android.
 
-### Option 2: Run Locally
-```bash
-# Clone the repository
-git clone https://github.com/huggingfacer04/ps4-games-database.git
-cd ps4-games-database
+## ✨ Recursos
 
-# Open in browser
-open index.html
-# or
-python -m http.server 8000
-# Then visit: http://localhost:8000
-```
+- 🔎 Pesquisa rápida no catálogo
+- 🎮 Catálogo local de jogos
+- 🔤 Organização e filtros
+- 🖼️ Suporte a capas e metadados
+- 🌎 Informações em inglês e português quando disponíveis
+- 🔗 Links externos de download
+- 📱 Interface adaptada para celular
+- 🎮 Suporte a controles/gamepad já presente no projeto
+- 📦 Versão Android baseada em Capacitor
 
----
+## 📴 Arquitetura sem dependência da Vercel
 
-## 📊 Database Statistics
+O APK não precisa de um servidor Vercel para executar a aplicação.
 
-### Total Content
-- **Games:** 6,001
-- **Download Links:** 38,690
-- **Mediafire Links:** 21,267 (54.9%)
-- **1File Links:** 16,805 (43.4%)
-- **Other Mirrors:** 618 (1.6%)
-
-### Top Games with Most Links
-1. **EA Sports FC 25** - 128 links
-2. **FIFA 22** - 101 links
-3. **FIFA 23** - 88 links
-4. **Prince of Persia: The Lost Crown** - 80 links
-5. **Elden Ring: Shadow of The Erdtree** - 72 links
-6. **God of War Ragnarök** - 66 links
-7. **Final Fantasy I–VI Pixel Remaster** - 59 links
-8. **Dying Light 2 Stay Human** - 58 links
-9. **Dragon Ball Z: Kakarot** - 54 links
-10. **Grand Theft Auto V** - 53 links
-
-### Games by Category
-- **Action/Adventure:** ~1,500 games
-- **RPG:** ~600 games
-- **Sports:** ~500 games
-- **Racing:** ~300 games
-- **Fighting:** ~250 games
-- **Shooter:** ~400 games
-- **Others:** ~2,451 games
-
----
-
-## 🔍 How to Use
-
-### 1. Search for a Game
-- Type the game name in the search box
-- Results filter in real-time
-- Example: "God of War", "Spider-Man", "Final Fantasy"
-
-### 2. Browse by Letter
-- Scroll through alphabetically organized sections
-- Click on any game to see download options
-
-### 3. Download
-- Each game has multiple download links
-- Choose your preferred host (Mediafire, 1File, etc.)
-- Click the download button
-- Wait 8 seconds on the redirect page
-- Download begins automatically
-
----
-
-## 📁 File Structure
+A estrutura é:
 
 ```
-ps4-games-database/
-├── index.html                      # Main database interface
-├── redirect.html                   # Download interstitial page
-├── ps4_games_with_downloads.json   # Complete database (110,392 lines)
-└── README.md                       # This file
+Android APK
+   │
+   ├── Interface HTML/CSS/JS
+   ├── Catálogo local
+   ├── metadata.json
+   └── Capacitor
+          │
+          └── Android
 ```
 
----
+O arquivo `metadata.json` é o armazenamento local de metadados que o APK pode utilizar diretamente.
 
-## 🎯 Popular Game Series
+A Vercel permanece apenas como hospedagem da **versão web** e como fallback da versão web quando necessário. Ela não é necessária para abrir o aplicativo Android.
 
-### Action/Adventure
-- Assassin's Creed (10+ games)
-- Batman Arkham series
-- God of War series
-- Grand Theft Auto V
-- Spider-Man
-- The Last of Us
-- Uncharted series
+### Dados locais
 
-### RPG
-- Final Fantasy (20+ games)
-- Dark Souls series
-- Bloodborne
-- Persona 5
-- The Witcher 3
-- Yakuza series (10+ games)
+- `ps4_games_expanded.json` — catálogo principal.
+- `metadata.json` — banco local de metadados para o APK.
+- `index.html` — interface principal.
+- `capacitor.config.ts` — configuração do aplicativo Android.
 
-### Sports
-- FIFA (10+ games)
-- NBA 2K (10+ games)
-- WWE 2K (10+ games)
-- Madden NFL series
+## 🏗️ Como o APK é construído
 
-### Shooter
-- Call of Duty (12+ games)
-- Battlefield series
-- Destiny series
-- Borderlands series
+O projeto usa **Capacitor** para transformar a aplicação web em um aplicativo Android.
 
----
+O GitHub Actions:
 
-## 🛠️ Technical Details
+1. instala Node.js;
+2. instala Java;
+3. instala as dependências do Capacitor;
+4. gera o projeto Android;
+5. copia a aplicação web para o Android;
+6. compila o APK;
+7. publica o APK como uma GitHub Release.
 
-### Built With
-- **HTML5/CSS3** - Modern web standards
-- **JavaScript** - Dynamic functionality
-- **JSON** - Database format
-- **GitHub Pages** - Free hosting
-- **Galaxy.ai** - AI-powered development
+Não é necessário manter a pasta `android/` gerada no repositório.
 
-### Browser Support
-- ✅ Chrome/Edge (latest)
-- ✅ Firefox (latest)
-- ✅ Safari (latest)
-- ✅ Mobile browsers
+## 🔧 Estrutura principal
 
-### Performance
-- **Load Time:** < 2 seconds
-- **Search Speed:** Real-time (< 100ms)
-- **Database Size:** 6.5 MB (compressed)
+```
+ps4-games-databaseFIX/
+├── index.html
+├── ps4_games_expanded.json
+├── metadata.json
+├── catalog.json
+├── manifest.json
+├── capacitor.config.ts
+├── package.json
+├── api/
+│   └── ps4-metadata.js
+├── .github/
+│   └── workflows/
+│       └── build-apk.yml
+└── README.md
+```
 
----
+## 🚀 Gerar uma nova versão do APK
 
-## 📱 Mobile Support
+No GitHub:
 
-Fully responsive design works on:
-- 📱 Smartphones (320px+)
-- 📱 Tablets (768px+)
-- 💻 Laptops (1024px+)
-- 🖥️ Desktops (1920px+)
+**Actions → Build Android APK → Run workflow**
 
----
+Depois que o processo terminar, uma nova Release será criada automaticamente.
 
-## ⚠️ Important Notes
+O arquivo poderá ser baixado diretamente por:
 
-### Legal Disclaimer
-- This database is for **educational purposes only**
-- All games are sourced from [dlpsgame.com](https://dlpsgame.com)
-- Requires **jailbroken PS4** (firmware 9.00 - 11.00)
-- We do not host any files - all links are external
-- Use at your own risk
+**[⬇️ Download do APK](https://github.com/Miguellbr/ps4-games-databaseFIX/releases/latest/download/app-debug.apk)**
 
-### Requirements
-- Jailbroken PS4 console
-- Compatible firmware (9.00 - 11.00)
-- Internet connection for downloads
-- USB drive or FTP for file transfer
+## ⚠️ Observações
 
----
+O aplicativo precisa de internet para acessar sites externos e abrir links de download. Isso é diferente de depender de um backend da Vercel: a própria aplicação e seus dados locais ficam dentro do APK.
 
-## 🤝 Contributing
+Os links de terceiros podem mudar ou ficar indisponíveis independentemente deste projeto.
 
-### Report Issues
-Found a broken link or error? [Open an issue](https://github.com/huggingfacer04/ps4-games-database/issues)
+## 📄 Licença
 
-### Suggest Improvements
-Have ideas for new features? [Start a discussion](https://github.com/huggingfacer04/ps4-games-database/discussions)
-
-### Update Database
-Want to help keep the database current? See [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)
-
----
-
-## 📈 Project Stats
-
-- **Created:** 2025-10-15
-- **Last Updated:** 2025-10-15
-- **Total Commits:** 1
-- **Contributors:** 1
-- **Stars:** ⭐ (Star this repo!)
-- **Forks:** 🍴 (Fork to customize!)
-
----
-
-## 🔗 Related Projects
-
-- **[Documentation Site](https://huggingfacer04.github.io/ps4-database-project/)** - How this was built
-- **[Galaxy.ai](https://galaxy.ai/?via=start-building)** - AI tool used to build this
-- **[dlpsgame.com](https://dlpsgame.com)** - Original source
-
----
-
-## 📞 Support
-
-### Need Help?
-- 📖 Read the [Deployment Guide](DEPLOYMENT_GUIDE.md)
-- 💬 [Open an issue](https://github.com/huggingfacer04/ps4-games-database/issues)
-- 🌐 Visit [dlpsgame.com](https://dlpsgame.com) for game-specific help
-
-### Want to Build Something Similar?
-Check out **[Galaxy.ai](https://galaxy.ai/?via=start-building)** - the AI tool that built this entire project from a single prompt!
-
----
-
-## 📜 License
-
-This project is open source and available under the [MIT License](LICENSE).
-
-**Note:** Game files and download links are property of their respective owners. This database only provides links to publicly available content.
-
----
-
-## 🎉 Acknowledgments
-
-- **dlpsgame.com** - For providing the game database
-- **Galaxy.ai** - For making this project possible
-- **Open Source Community** - For tools and libraries used
-- **You** - For using this database!
-
----
-
-## 🌟 Star This Repo!
-
-If you find this database useful, please ⭐ star this repository to show your support!
+Consulte o arquivo [LICENSE](https://github.com/Miguellbr/ps4-games-databaseFIX/blob/main/LICENSE).
 
 ---
 
 <div align="center">
 
-**Built with ❤️ using [Galaxy.ai](https://galaxy.ai/?via=start-building)**
+**🎮 PS4 Games Database**
 
-[🎮 View Database](https://huggingfacer04.github.io/ps4-games-database/) | 
-[📖 Documentation](https://huggingfacer04.github.io/ps4-database-project/) | 
-[🚀 Galaxy.ai](https://galaxy.ai/?via=start-building)
+[🌐 Página](https://ps4-games-database-fix.vercel.app/) · [📱 APK](https://github.com/Miguellbr/ps4-games-databaseFIX/releases/latest/download/app-debug.apk) · [💻 Código-fonte](https://github.com/Miguellbr/ps4-games-databaseFIX)
 
 </div>
-
