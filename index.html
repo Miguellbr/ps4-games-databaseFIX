@@ -101,6 +101,12 @@ function extractCusa(value){const m=String(value||'').toUpperCase().match(/CUSA\
 function getCusaId(game){
   const direct=extractCusa(game?.title_id||game?.titleId||game?.content_id||game?.contentId||game?.id||game?.metadata_content_id||'');
   if(direct)return direct;
+  const normalizedName=normalizeMetadataName(game?.name||'');
+  const knownNameIds={
+    'risk of rain':'CUSA04192',
+    'risk of rain 2':'CUSA16153'
+  };
+  if(knownNameIds[normalizedName])return knownNameIds[normalizedName];
   const seen=new Set();
   function scan(value,depth){
     if(depth>3||value==null)return '';
@@ -368,8 +374,8 @@ function createGameCard(game) {
   const links=document.createElement('div'); links.className='download-links';
   const add=(arr,cls,label)=>(arr||[]).forEach((link,i)=>{
     const a=document.createElement('a');
-    a.href=`redirect-optimized.html?url=${encodeURIComponent(link)}&game=${encodeURIComponent(game.name)}`;
-    a.className='download-btn '+cls; a.textContent=`${label} ${i+1}`; a.target='_blank';
+    a.href=link;
+    a.className='download-btn '+cls; a.textContent=`${label} ${i+1}`; a.target='_blank'; a.rel='noopener noreferrer';
     links.appendChild(a);
   });
   add(game.download_links?.mediafire,'btn-mediafire','Mediafire');
