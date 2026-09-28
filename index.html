@@ -496,10 +496,23 @@ function createGameCard(game) {
   const desc=document.createElement('div'); desc.className='game-description'; desc.dataset.descriptionBox='1'; setDescriptionContent(desc,cleanStoreDescription(game.description_en||game.description||''),game.description_pt?cleanStoreDescription(game.description_pt):'Não disponível'); div.appendChild(desc);
   const links=document.createElement('div'); links.className='download-links';
   const add=(arr,cls,label)=>(arr||[]).forEach((link,i)=>{
-    const a=document.createElement('a');
-    a.href=link;
-    a.className='download-btn '+cls; a.textContent=`${label} ${i+1}`; a.target='_blank'; a.rel='noopener noreferrer';
-    links.appendChild(a);
+    if(!link) return;
+    if(window.downloadResolver && window.downloadResolver.loaded){
+      const host=cls.replace(/^btn-/,'');
+      const a=window.downloadResolver.createDownloadLink(
+        link,
+        game.title || game.name,
+        host,
+        i,
+        label
+      );
+      links.appendChild(a);
+    } else {
+      const a=document.createElement('a');
+      a.href=link;
+      a.className='download-btn '+cls; a.textContent=`${label} ${i+1}`; a.target='_blank'; a.rel='noopener noreferrer';
+      links.appendChild(a);
+    }
   });
   add(game.download_links?.mediafire,'btn-mediafire','Mediafire');
   add(game.download_links?.['1file'],'btn-1file','1File');
