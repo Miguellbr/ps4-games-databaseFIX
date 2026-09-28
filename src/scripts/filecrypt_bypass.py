@@ -80,345 +80,169 @@ class FileCryptBypass:
         logger.debug(f"[EVIDENCE] {stage}: {json.dumps(data, indent=2)[:200]}...")
         
     def _extract_pow_params(self, html: str, url: str) -> Optional[PoWChallenge]:
-        """
-        Extrai parâmetros PoW do HTML - evidence-based, não assume formato
-        """
+        """Detecta desafios de verificação sem presumir um formato específico."""
         self._log_evidence('html_raw', {'length': len(html), 'url': url})
-        
-        # Padrões comuns de campos PoW
-        patterns = {
-            'pow_id': r'(?:name|id)=["\']pow_id["\'][^>]*value=["\']([^"\']+)',
-            'pow_nonce': r'(?:name|id)=["\']pow_nonce["\'][^>]*value=["\']([^"\']*)',
-            'pow_difficulty': r'(?:name|id)=["\']pow_difficulty["\'][^>]*value=["\'](\d+)',
-            'pow_algorithm': r'(?:name|id)=["\']pow_algorithm["\'][^>]*value=["\']([^"\']+)',
-            'pow_prefix': r'(?:name|id)=["\']pow_prefix["\'][^>]*value=["\']([^"\']*)',
-            'pow_suffix': r'(?:name|id)=["\']pow_suffix["\'][^>]*value=["\']([^"\']*)',
-        }
-        
-        extracted = {}
-        for field, pattern in patterns.items():
-            matches = re.findall(pattern, html, re.IGNORECASE)
-            if matches:
-                extracted[field] = matches[0]
-                logger.info(f"[EXTRACTED] {field}: {matches[0][:50]}...")
-                
-        self._log_evidence('extracted_fields', extracted)
-        
-        if not extracted.get('pow_id'):
-            # Tenta padrões alternativos (JavaScript inline)
-            js_patterns = [
-                r'pow_id\s*[=:]\s*["\']([^"\']+)',
-                r'["\']pow_id["\']\s*[=:]\s*["\']([^"\']+)',
-                r'var\s+pow_id\s*=\s*["\']([^"\']+)',
-            ]
-            for pattern in js_patterns:
-                match = re.search(pattern, html)
-                if match:
-                    extracted['pow_id'] = match.group(1)
-                    logger.info(f"[EXTRACTED-JS] pow_id: {extracted['pow_id']}")
-                    break
-                    
-        if not extracted.get('pow_id'):
-            self._log_evidence('error', {'message': 'pow_id não encontrado'})
-            return None
-            
-        # Detecta algoritmo (default: sha256)
-        algorithm = extracted.get('pow_algorithm', 'sha256').lower()
-        
-        # Detecta dificuldade (default: 4 zeros)
-        difficulty = int(extracted.get('pow_difficulty', 4))
-        
-        challenge = PoWChallenge(
-            pow_id=extracted['pow_id'],
-            algorithm=algorithm,
-            difficulty=difficulty,
-            prefix=extracted.get('pow_prefix', ''),
-            suffix=extracted.get('pow_suffix', ''),
-            extra_params=extracted
-        )
-        
-        self._log_evidence('challenge_created', {
-            'pow_id': challenge.pow_id,
-            'algorithm': challenge.algorithm,
-            'difficulty': challenge.difficulty
-        })
-        
-        return challenge
-        
-    def _solve_sha256(self, challenge: PoWChallenge) -> Optional[str]:
-        """
-        Resolve desafio SHA-256 - busca nonce que produz hash com N zeros iniciais
-        """
-        if challenge.algorithm != 'sha256':
-            return None
-            
-        target_prefix = '0' * challenge.difficulty
-        nonce = 0
-        start_time = time.time()
-        
-        logger.info(f"[SOLVER] Iniciando busca por nonce (dificuldade: {challenge.difficulty})...")
-        
-        while True:
-            # Constrói string para hash
-            data = f"{challenge.prefix}{nonce}{challenge.suffix}{challenge.pow_id}"
-            
-            # Calcula SHA-256
-            hash_result = hashlib.sha256(data.encode()).hexdigest()
-            
-            # Verifica se satisfaz dificuldade
-            if hash_result.startswith(target_prefix):
-                elapsed = time.time() - start_time
-                logger.info(f"[SOLVER] Nonce encontrado: {nonce} (tempo: {elapsed:.2f}s)")
-                logger.info(f"[SOLVER] Hash: {hash_result}")
-                
-                self._log_evidence('pow_solved', {
-                    'nonce': nonce,
-                    'hash': hash_result,
-                    'elapsed': elapsed,
-                    'iterations': nonce
-                })
-                
-                return str(nonce)
-                
-            nonce += 1
-            
-            # Log progresso a cada 100k iterações
-            if nonce % 100000 == 0:
-                logger.debug(f"[SOLVER] Testados {nonce} nonces...")
-                
-            # Timeout de segurança (30 segundos)
-            if time.time() - start_time > 30:
-                logger.error("[SOLVER] Timeout - não encontrou nonce em 30s")
-                return None
-                
-    def _solve_pow(self, challenge: PoWChallenge) -> Optional[str]:
-        """
-        Dispatcher de solvers baseado no algoritmo detectado
-        """
-        solvers = {
-            'sha256': self._solve_sha256,
-            # Adicionar mais algoritmos conforme detectados
-        }
-        
-        solver = solvers.get(challenge.algorithm)
-        if not solver:
-            logger.error(f"[SOLVER] Algoritmo não suportado: {challenge.algorithm}")
-            return None
-            
-        return solver(challenge)
-        
-    def _find_verification_endpoint(self, html: str, base_url: str) -> Optional[str]:
-        """
-        Descobre endpoint de verificação - evidence-based
-        """
-        # Padrões comuns de endpoints
-        patterns = [
-            r'action=["\']([^"\']*verify[^"\']*)',
-            r'action=["\']([^"\']*check[^"\']*)',
-            r'action=["\']([^"\']*pow[^"\']*)',
-            r'url\s*[=:]\s*["\']([^"\']*verify[^"\']*)',
-            r'fetch\(["\']([^"\']*verify[^"\']*)',
-            r'post\(["\']([^"\']*verify[^"\']*)',
+
+        lower = html.lower()
+        markers = [
+            'captcha', 'hcaptcha', 'recaptcha', 'turnstile',
+            'cloudflare', 'verify you are human', 'verification',
+            'challenge', 'pow', 'proof of work'
         ]
-        
-        for pattern in patterns:
-            matches = re.findall(pattern, html, re.IGNORECASE)
-            for match in matches:
-                full_url = urljoin(base_url, match)
-                self._log_evidence('endpoint_found', {'pattern': pattern, 'url': full_url})
-                return full_url
-                
-        # Fallback: tenta endpoints comuns
-        common_endpoints = ['/verify', '/check', '/api/verify', '/api/check', '/pow/verify']
-        parsed = urlparse(base_url)
-        base = f"{parsed.scheme}://{parsed.netloc}"
-        
-        for endpoint in common_endpoints:
-            url = base + endpoint
-            self._log_evidence('endpoint_fallback', {'url': url})
-            return url
-            
-        return None
-        
-    def _submit_pow(self, challenge: PoWChallenge, nonce: str, endpoint: str) -> Optional[Dict]:
-        """
-        Submete solução PoW para o endpoint de verificação
-        """
-        payload = {
-            'pow_id': challenge.pow_id,
-            'pow_nonce': nonce,
-            'pow_elapsed': str(int(time.time())),
-            'pow_algorithm': challenge.algorithm,
-        }
-        
-        # Adiciona campos extras detectados
-        for key, value in challenge.extra_params.items():
-            if key not in payload and not key.startswith('pow_'):
-                payload[key] = value
-                
-        self._log_evidence('submit_payload', payload)
-        
-        try:
-            response = self.session.post(endpoint, data=payload, timeout=30)
-            self._log_evidence('submit_response', {
-                'status_code': response.status_code,
-                'headers': dict(response.headers),
-                'url': response.url
-            })
-            
-            # Tenta parsear como JSON
-            try:
-                data = response.json()
-                self._log_evidence('response_json', data)
-                return data
-            except:
-                # Retorna HTML/texto
-                return {
-                    'status_code': response.status_code,
-                    'text': response.text[:1000],
-                    'url': response.url
-                }
-                
-        except Exception as e:
-            self._log_evidence('submit_error', {'error': str(e)})
+        detected = [m for m in markers if m in lower]
+
+        # Mantém compatibilidade com desafios explicitamente expostos no HTML.
+        def first(pattern):
+            m = re.search(pattern, html, re.IGNORECASE)
+            return m.group(1) if m else None
+
+        pow_id = first(r'(?:name|id)=["']pow_id["'][^>]*value=["']([^"']+)')
+        algorithm = first(r'(?:name|id)=["']pow_algorithm["'][^>]*value=["']([^"']+)')
+        difficulty_raw = first(r'(?:name|id)=["']pow_difficulty["'][^>]*value=["'](\d+)')
+
+        self._log_evidence('challenge_detection', {
+            'markers': detected,
+            'explicit_pow_id': bool(pow_id)
+        })
+
+        if not pow_id:
             return None
-            
-    def _extract_final_link(self, response_data: Dict, html: str) -> Optional[str]:
-        """
-        Extrai link final (MediaFire/1File) da resposta - evidence-based
-        """
-        sources = []
-        
-        if isinstance(response_data, dict):
-            # Procura em campos comuns
-            link_fields = ['download_url', 'url', 'link', 'redirect', 'location', 
-                        'final_url', 'mediafire', '1file', 'direct_link']
-            for field in link_fields:
-                if field in response_data and isinstance(response_data[field], str):
-                    if 'mediafire' in response_data[field] or '1file' in response_data[field]:
-                        sources.append(('json_field', response_data[field]))
-                        
-            # Procura em redirect
-            if 'redirect' in response_data:
-                sources.append(('json_redirect', response_data['redirect']))
-                
-        # Procura no HTML
-        if html:
-            # Padrões de links diretos
-            patterns = [
-                r'href=["\'](https?://[^"\']*mediafire\.com[^"\']+)',
-                r'href=["\'](https?://[^"\']*1file\.com[^"\']+)',
-                r'href=["\'](https?://[^"\']*1fichier\.com[^"\']+)',
-                r'url["\']?\s*[=:]\s*["\'](https?://[^"\']+(?:mediafire|1file|1fichier)[^"\']+)',
-                r'data-url=["\'](https?://[^"\']+(?:mediafire|1file|1fichier)[^"\']+)',
-            ]
-            
-            for pattern in patterns:
-                matches = re.findall(pattern, html, re.IGNORECASE)
-                for match in matches:
-                    sources.append(('html_pattern', match))
-                    
-        self._log_evidence('extracted_links', {'count': len(sources), 'sources': sources[:5]})
-        
-        # Retorna primeiro link válido
-        for source_type, link in sources:
-            if link.startswith('http'):
-                logger.info(f"[EXTRACTED] Link final ({source_type}): {link}")
-                return link
-                
+
+        return PoWChallenge(
+            pow_id=pow_id,
+            algorithm=(algorithm or 'unknown').lower(),
+            difficulty=int(difficulty_raw or 0),
+            prefix=first(r'(?:name|id)=["']pow_prefix["'][^>]*value=["']([^"']*)') or '',
+            suffix=first(r'(?:name|id)=["']pow_suffix["'][^>]*value=["']([^"']*)') or '',
+            extra_params={}
+        )
+
+    @staticmethod
+    def _looks_like_verification(html: str) -> bool:
+        text = (html or '').lower()
+        return any(marker in text for marker in (
+            'captcha', 'hcaptcha', 'recaptcha', 'turnstile',
+            'cloudflare', 'verify you are human',
+            'checking your browser', 'access denied',
+            'verification required'
+        ))
+
+    @staticmethod
+    def _find_final_url(response: requests.Response) -> Optional[str]:
+        """Retorna um destino final somente quando a requisição já o revelou."""
+        url = response.url
+        host = urlparse(url).netloc.lower()
+        if any(h in host for h in ('mediafire.com', '1file.com', '1fichier.com')):
+            return url
         return None
-        
+
+    def _extract_final_link(self, response_data: Dict, html: str) -> Optional[str]:
+        """Extrai destinos explícitos de respostas HTML/JSON."""
+        candidates = []
+
+        if isinstance(response_data, dict):
+            for field in ('download_url', 'final_url', 'direct_link', 'url', 'link',
+                          'redirect', 'location', 'mediafire', '1file', '1fichier'):
+                value = response_data.get(field)
+                if isinstance(value, str):
+                    candidates.append(value)
+
+        if html:
+            patterns = [
+                r'https?://[^"'<>s]+(?:mediafire\.com|1file\.com|1fichier\.com)[^"'<>s]*',
+                r'(?:href|data-url|location|redirect|url)\s*=\s*["'](https?://[^"']+)'
+            ]
+            for pattern in patterns:
+                candidates.extend(re.findall(pattern, html, re.IGNORECASE))
+
+        for link in candidates:
+            link = link.replace('&amp;', '&')
+            if link.startswith(('http://', 'https://')) and any(
+                host in urlparse(link).netloc.lower()
+                for host in ('mediafire.com', '1file.com', '1fichier.com')
+            ):
+                return link
+
+        return None
+
     def bypass(self, filecrypt_url: str) -> BypassResult:
         """
-        Executa bypass completo em um link do FileCrypt
-        
-        Args:
-            filecrypt_url: URL completa do FileCrypt (ex: https://filecrypt.co/...)
-            
-        Returns:
-            BypassResult com sucesso/fracasso e link final
+        Carrega o FileCrypt, segue redirecionamentos normais e extrai um destino
+        explícito. Quando encontra anti-bot/verificação, retorna esse estado em
+        vez de fingir que um endpoint ou payload é conhecido.
         """
-        logger.info(f"[BYPASS] Iniciando: {filecrypt_url}")
-        
-        # Etapa 1: Carrega página inicial
+        logger.info(f"[RESOLVE] Iniciando: {filecrypt_url}")
+
         try:
-            response = self.session.get(filecrypt_url, timeout=30)
-            html = response.text
+            response = self.session.get(filecrypt_url, timeout=30, allow_redirects=True)
+            html = response.text or ''
             self._log_evidence('initial_load', {
                 'status': response.status_code,
                 'content_length': len(html),
-                'url': response.url
+                'requested_url': filecrypt_url,
+                'final_response_url': response.url,
+                'history': [
+                    {'status': r.status_code, 'url': r.url, 'location': r.headers.get('Location')}
+                    for r in response.history
+                ]
             })
-        except Exception as e:
+        except requests.RequestException as e:
             return BypassResult(
                 success=False,
-                error_message=f"Falha ao carregar página: {e}",
+                error_message=f"Falha HTTP: {e}",
                 evidence_log=self.evidence_log
             )
-            
-        # Etapa 2: Extrai parâmetros PoW
-        challenge = self._extract_pow_params(html, response.url)
-        if not challenge:
-            # Pode ser que não tenha PoW ou já redirecionou
-            final_link = self._extract_final_link({}, html)
-            if final_link:
-                return BypassResult(
-                    success=True,
-                    final_url=final_link,
-                    evidence_log=self.evidence_log
-                )
-            return BypassResult(
-                success=False,
-                error_message="Não foi possível extrair parâmetros PoW",
-                evidence_log=self.evidence_log
-            )
-            
-        # Etapa 3: Resolve PoW
-        nonce = self._solve_pow(challenge)
-        if not nonce:
-            return BypassResult(
-                success=False,
-                error_message="Falha ao resolver PoW",
-                evidence_log=self.evidence_log
-            )
-            
-        # Etapa 4: Encontra endpoint de verificação
-        endpoint = self._find_verification_endpoint(html, response.url)
-        if not endpoint:
-            return BypassResult(
-                success=False,
-                error_message="Endpoint de verificação não encontrado",
-                evidence_log=self.evidence_log
-            )
-            
-        # Etapa 5: Submete solução
-        verify_response = self._submit_pow(challenge, nonce, endpoint)
-        if not verify_response:
-            return BypassResult(
-                success=False,
-                error_message="Falha na submissão do PoW",
-                evidence_log=self.evidence_log
-            )
-            
-        # Etapa 6: Extrai link final
-        final_link = self._extract_final_link(
-            verify_response, 
-            verify_response.get('text', '') if isinstance(verify_response, dict) else ''
-        )
-        
-        if final_link:
+
+        # Caso o servidor já tenha redirecionado diretamente.
+        direct = self._find_final_url(response) or self._extract_final_link({}, html)
+        if direct:
             return BypassResult(
                 success=True,
-                final_url=final_link,
-                response_data=verify_response,
+                final_url=direct,
                 cookies=dict(self.session.cookies),
                 evidence_log=self.evidence_log
             )
-            
+
+        # Não inventa endpoints/soluções para mecanismos anti-bot.
+        if self._looks_like_verification(html):
+            self._log_evidence('verification_required', {
+                'url': response.url,
+                'status': response.status_code
+            })
+            return BypassResult(
+                success=False,
+                error_message='needs_verification: a página exige verificação/anti-bot',
+                response_data={'status_code': response.status_code, 'url': response.url},
+                cookies=dict(self.session.cookies),
+                evidence_log=self.evidence_log
+            )
+
+        challenge = self._extract_pow_params(html, response.url)
+        if challenge:
+            return BypassResult(
+                success=False,
+                error_message=(
+                    f'needs_verification: desafio PoW detectado '
+                    f'(algorithm={challenge.algorithm}, difficulty={challenge.difficulty})'
+                ),
+                response_data={'challenge': {
+                    'pow_id': challenge.pow_id,
+                    'algorithm': challenge.algorithm,
+                    'difficulty': challenge.difficulty
+                }},
+                cookies=dict(self.session.cookies),
+                evidence_log=self.evidence_log
+            )
+
         return BypassResult(
             success=False,
-            error_message="Link final não encontrado na resposta",
-            response_data=verify_response,
+            error_message='unknown: nenhum destino direto ou desafio reconhecido foi encontrado',
+            response_data={
+                'status_code': response.status_code,
+                'url': response.url,
+                'content_type': response.headers.get('Content-Type', '')
+            },
+            cookies=dict(self.session.cookies),
             evidence_log=self.evidence_log
         )
 
