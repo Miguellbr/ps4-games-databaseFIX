@@ -85,7 +85,7 @@ let currentMode = 'all';
 const BATCH_SIZE = 100;
 let renderGeneration = 0;
 let renderTimer = null;
-const DB_CACHE_NAME='ps4db-index-v8-metadata';
+const DB_CACHE_NAME='ps4db-index-v9-metadata';
 const DB_CACHE_VERSION=1;
 const EXPECTED_GAME_COUNT=17065;
 let dbCachePromise=null;
@@ -99,7 +99,7 @@ async function loadGames(){try{await new Promise(requestAnimationFrame);const ca
 
 function extractCusa(value){const m=String(value||'').toUpperCase().match(/CUSA\d{5}/);return m?m[0]:'';}
 function getCusaId(game){return extractCusa(game?.title_id||game?.titleId||game?.content_id||game?.contentId||game?.id||game?.metadata_content_id||'');}
-function coverFromLegacyLibrary(id){const c=extractCusa(id);return c?'https://dn710101.ca.archive.org/0/items/ps4-fpkg-collection-english-icons/'+c+'.png':'';}let legacyCatalogPromise=null;
+function coverFromLegacyLibrary(id){const c=extractCusa(id);return c?'https://store.playstation.com/store/api/chihiro/00_09_000/titlecontainer/US/en/999/'+c+'_00/image?w=512&h=512&bg_color=000000&opacity=100':'';}let legacyCatalogPromise=null;
 async function applyLegacyCatalog(games){
   if(!legacyCatalogPromise){
     legacyCatalogPromise=fetch('./catalog.json?legacy=1',{cache:'force-cache'})
@@ -254,7 +254,7 @@ function queueMetadataGames(games){for(const game of games||[]){const id=getCusa
 async function runMetadataWorker(){if(metadataWorkerRunning)return;metadataWorkerRunning=true;while(metadataQueue.length){const batch=metadataQueue.splice(0,5);const ids=[...new Set(batch.map(getCusaId).filter(Boolean))];try{const r=await fetch('./api/ps4-metadata?ids='+encodeURIComponent(ids.join(',')),{cache:'no-store'});if(!r.ok)throw new Error('metadata HTTP '+r.status);const data=await r.json();const byId=new Map((data.games||[]).map(x=>[String(x.title_id||'').toUpperCase(),x]));for(const game of batch){const id=getCusaId(game),meta=byId.get(id);document.querySelectorAll('.game-item[data-title-id="'+id+'"]').forEach(card=>{const box=card.querySelector('[data-description-box]');if(!meta){if(box)box.innerHTML='<b>EN:</b> Não disponível <span>•</span> <b>PT:</b> Não disponível';return;}Object.assign(game,meta,{description:game.description||meta.description_en||''});if(box){const en=game.description_en||game.description||'';const pt=game.description_pt||'';box.innerHTML=(en?'<b>EN:</b> '+String(en).replace(/</g,'&lt;'):'<b>EN:</b> Não disponível')+' <span>•</span> '+(pt?'<b>PT:</b> '+String(pt).replace(/</g,'&lt;'):'<b>PT:</b> Não disponível');}if(meta.cover_url&&!card.querySelector('.game-cover')){const img=document.createElement('img');img.className='game-cover';img.src=meta.cover_url;img.alt='Capa de '+game.name;img.loading='lazy';card.prepend(img);}});}}catch(err){console.warn('Metadados:',err);batch.forEach(game=>{const id=getCusaId(game);document.querySelectorAll('.game-item[data-title-id="'+id+'"] [data-description-box]').forEach(box=>box.innerHTML='<b>EN:</b> Erro ao carregar <span>•</span> <b>PT:</b> Erro ao carregar');});}await new Promise(r=>setTimeout(r,150));}metadataWorkerRunning=false;}
 function createGameCard(game) {
   const div=document.createElement('div'); div.className='game-item'; div.dataset.titleId=getCusaId(game);
-  if(game.cover_url){const img=document.createElement('img');img.className='game-cover';img.src=game.cover_url;img.alt='Capa de '+game.name;img.loading='lazy';div.appendChild(img);}
+  if(game.cover_url){const img=document.createElement('img');img.className='game-cover';img.src=game.cover_url;img.alt='Capa de '+game.name;img.loading='lazy';img.onerror=()=>{const id=getCusaId(game);const fallback=id?'https://store.playstation.com/store/api/chihiro/00_09_000/titlecontainer/US/en/999/'+id+'_00/image':'';if(fallback&&img.src!==fallback)img.src=fallback;else img.remove();};div.appendChild(img);}
   const title=document.createElement('div'); title.className='game-title'; title.textContent=game.name;
   div.appendChild(title);
   const desc=document.createElement('div'); desc.className='game-description'; desc.dataset.descriptionBox='1'; const en=game.description_en||game.description||''; const pt=game.description_pt||''; desc.innerHTML=(en?'<b>EN:</b> '+String(en).replace(/</g,'&lt;'):'<b>EN:</b> Não disponível')+' <span>•</span> '+(pt?'<b>PT:</b> '+String(pt).replace(/</g,'&lt;'):'<b>PT:</b> carregando…'); div.appendChild(desc);
