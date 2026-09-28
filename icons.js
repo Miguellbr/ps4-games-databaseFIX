@@ -28,12 +28,14 @@
   `;
   document.head.appendChild(css);
 
-  document.querySelectorAll('[data-icon]').forEach(el => {
+  function refreshAppIcons(root=document) { root.querySelectorAll('[data-icon]').forEach(el => {
     const name = el.dataset.icon;
     if (!icons[name]) return;
     const span = document.createElement('span');
     span.className = 'app-icon' + (el.dataset.iconClass ? ' '+el.dataset.iconClass : '');
     span.innerHTML = icons[name];
     el.replaceWith(span);
-  });
+  }); }
+  window.refreshAppIcons = refreshAppIcons;
+  refreshAppIcons();
 })();
