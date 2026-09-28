@@ -89,128 +89,43 @@ let currentMode = 'all';
 const BATCH_SIZE = 32;
 let renderGeneration = 0;
 let renderTimer = null;
-const DB_CACHE_NAME = 'ps4db-index-v6';
-const DB_CACHE_VERSION = 1;
-let dbCachePromise = null;
-
-function openDatabaseCache(){
-  if(dbCachePromise) return dbCachePromise;
-  dbCachePromise = new Promise((resolve,reject)=>{
-    const req=indexedDB.open(DB_CACHE_NAME, DB_CACHE_VERSION);
-    req.onupgradeneeded=()=>{ const db=req.result; if(!db.objectStoreNames.contains('games')) db.createObjectStore('games',{keyPath:'id'}); };
-    req.onsuccess=()=>resolve(req.result);
-    req.onerror=()=>reject(req.error);
-  });
-  return dbCachePromise;
-}
-async function readDatabaseCache(){
+const DB_CACHE_NAME='ps4db-index-v7';
+const DB_CACHE_VERSION=1;
+const EXPECTED_GAME_COUNT=17065;
+let dbCachePromise=null;
+function openDatabaseCache(){if(dbCachePromise)return dbCachePromise;dbCachePromise=new Promise((resolve,reject)=>{const req=indexedDB.open(DB_CACHE_NAME,DB_CACHE_VERSION);req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains('games'))db.createObjectStore('games',{keyPath:'id'});};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});return dbCachePromise;}
+async function clearDatabaseCache(){try{const db=await openDatabaseCache();await new Promise((resolve,reject)=>{const tx=db.transaction('games','readwrite'),store=tx.objectStore('games'),req=store.clear();req.onsuccess=resolve;req.onerror=()=>reject(req.error);});}catch(err){console.warn('Não foi possível limpar cache local:',err);}}
+async function readDatabaseCache(){try{const db=await openDatabaseCache();const games=await new Promise((resolve,reject)=>{const tx=db.transaction('games','readonly'),store=tx.objectStore('games'),out=[];const req=store.openCursor();req.onsuccess=()=>{const cur=req.result;if(cur){out.push(cur.value.game);cur.continue();}else resolve(out);};req.onerror=()=>reject(req.error);});if(games.length<EXPECTED_GAME_COUNT){console.warn('Cache incompleto:',games.length,'de',EXPECTED_GAME_COUNT);await clearDatabaseCache();return [];}return games;}catch(err){console.warn('Cache indisponível:',err);return [];}}
+async function writeDatabaseCache(games){if(!Array.isArray(games)||games.length<EXPECTED_GAME_COUNT)throw new Error('Recusa de cache: catálogo incompleto ('+(games?.length||0)+' registros).');const db=await openDatabaseCache();await new Promise((resolve,reject)=>{const tx=db.transaction('games','readwrite'),store=tx.objectStore('games');async function loadGames(){
   try{
-    const db=await openDatabaseCache();
-    return await new Promise((resolve,reject)=>{
-      const tx=db.transaction('games','readonly'), store=tx.objectStore('games'), out=[];
-      const req=store.openCursor();
-      req.onsuccess=()=>{ const c=req.result; if(c){ out.push(c.value.game); c.continue(); } else resolve(out); };
-      req.onerror=()=>reject(req.error);
-    });
-  }catch(err){ console.warn('Cache local indisponível:',err); return []; }
-}
-async function writeDatabaseCache(games){
-  try{
-    const db=await openDatabaseCache();
-    await new Promise((resolve,reject)=>{
-      const tx=db.transaction('games','readwrite'), store=tx.objectStore('games');
-      store.clear();
-      games.forEach((game,i)=>store.put({id:i,game}));
-      tx.oncomplete=resolve; tx.onerror=()=>reject(tx.error);
-    });
-  }catch(err){ console.warn('Não foi possível salvar cache local:',err); }
-}
-
-const FAVORITES_KEY = 'ps4db_favorites';
-const HISTORY_KEY = 'ps4db_history';
-
-const getFavorites = () => JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]');
-const saveFavorites = v => localStorage.setItem(FAVORITES_KEY, JSON.stringify(v));
-const getHistory = () => JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-
-async function loadGames() {
-  try {
     await new Promise(requestAnimationFrame);
-
-    const cached = await readDatabaseCache();
-    if(cached.length){
-      allGames = cached.map(normalizeMainGame);
-      filteredGames = [...allGames];
-      renderedCount = 0;
-      document.getElementById('gamesContainer').innerHTML = '';
-      document.getElementById('searchInfo').textContent =
-        'Biblioteca carregada do cache local: ' + allGames.length.toLocaleString() + ' jogos';
-      rebuildLibraryBar();
-      rebuildRegionFilter();
-      buildAlphaNav();
-      updateStats();
-      renderBatch();
-      return;
+    const cached=await readDatabaseCache();
+    if(cached.length>=EXPECTED_GAME_COUNT){
+      allGames=cached.map(normalizeMainGame);filteredGames=[...allGames];renderedCount=0;
+      document.getElementById('gamesContainer').innerHTML='';
+      document.getElementById('searchInfo').textContent='Biblioteca carregada do cache local: '+allGames.length.toLocaleString()+' jogos';
+      rebuildLibraryBar();rebuildRegionFilter();buildAlphaNav();updateStats();renderBatch();return;
     }
-
-    const response = await fetch('./ps4_games_expanded.json', { cache:'default' });
-    if (!response.ok) throw new Error('HTTP ' + response.status);
-    if (!response.body) throw new Error('Streaming não suportado neste navegador');
-
-    allGames = [];
-    filteredGames = [];
-    renderedCount = 0;
-    document.getElementById('gamesContainer').innerHTML =
-      '<div class="loading">Preparando o índice local da biblioteca...</div>';
-    document.getElementById('searchInfo').textContent = 'Baixando e indexando jogos...';
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let depth = 0, inString = false, escaped = false, objectStart = -1;
-    let loaded = 0;
-
-    while(true){
-      const {value,done}=await reader.read();
-      if(done) break;
-      buffer += decoder.decode(value,{stream:true});
-      let i=0;
-      while(i<buffer.length){
-        const c=buffer[i];
-        if(inString){
-          if(escaped) escaped=false;
-          else if(c==='\\') escaped=true;
-          else if(c==='"') inString=false;
-          i++; continue;
-        }
-        if(c==='"'){inString=true;i++;continue;}
-        if(c==='{'){
-          if(depth===0) objectStart=i;
-          depth++;
-        }else if(c==='}'){
-          depth--;
-          if(depth===0 && objectStart>=0){
-            const raw=buffer.slice(objectStart,i+1);
-            try{
-              allGames.push(normalizeMainGame(JSON.parse(raw)));
-              loaded++;
-            }catch(err){ console.warn('Registro ignorado:',err); }
-            objectStart=-1;
-            buffer=buffer.slice(i+1);
-            i=0;
-            continue;
-          }
-        }
-        i++;
-      }
-      document.getElementById('searchInfo').textContent =
-        'Indexando... ' + loaded.toLocaleString() + ' jogos recebidos';
-      await new Promise(requestAnimationFrame);
-    }
-    buffer += decoder.decode();
-    if(loaded===0) throw new Error('Nenhum registro encontrado no banco');
-
-    filteredGames=[...allGames];
+    document.getElementById('gamesContainer').innerHTML='<div class="loading">Baixando e indexando a biblioteca completa...</div>';
+    document.getElementById('searchInfo').textContent='Cache incompleto ou ausente. Reindexando o JSON completo...';
+    const response=await fetch('./ps4_games_expanded.json?index='+Date.now(),{cache:'no-store'});
+    if(!response.ok)throw new Error('HTTP '+response.status);
+    const data=await response.json();
+    const parsedGames=parseImportedJSON(data,'main');
+    const count=Array.isArray(parsedGames)?parsedGames.length:0;
+    if(count<EXPECTED_GAME_COUNT){await clearDatabaseCache();throw new Error('Validação do catálogo falhou: '+count.toLocaleString()+' registros encontrados; esperado pelo menos '+EXPECTED_GAME_COUNT.toLocaleString()+'. O cache NÃO foi salvo.');}
+    allGames=parsedGames.map(normalizeMainGame);filteredGames=[...allGames];renderedCount=0;
+    document.getElementById('searchInfo').textContent='JSON completo indexado: '+count.toLocaleString()+' jogos. Salvando índice local...';
+    await writeDatabaseCache(allGames);
+    const verified=await readDatabaseCache();
+    if(verified.length!==allGames.length){await clearDatabaseCache();throw new Error('Validação pós-gravação falhou: '+verified.length+' de '+allGames.length+' registros persistidos.');}
+    rebuildLibraryBar();rebuildRegionFilter();buildAlphaNav();updateStats();renderedCount=0;renderBatch();
+  }catch(error){
+    document.getElementById('gamesContainer').innerHTML='<div class="empty-state"><h3 style="color:var(--text);margin-bottom:8px">Não foi possível carregar a biblioteca completa</h3><p>'+String(error.message||error).replace(/</g,'&lt;')+'</p><p style="margin-top:10px">O site não aceita nem salva um catálogo incompleto.</p></div>';
+    document.getElementById('searchInfo').textContent='Falha na validação da biblioteca';console.error('PS4 Database:',error);
+  }
+}
+mes];
     document.getElementById('searchInfo').textContent =
       'Salvando índice local... ' + loaded.toLocaleString() + ' jogos';
     await writeDatabaseCache(allGames);
