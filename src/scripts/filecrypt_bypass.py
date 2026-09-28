@@ -13,6 +13,7 @@ import logging
 from typing import Optional, Dict, Any, Callable
 from dataclasses import dataclass
 from urllib.parse import urljoin, urlparse
+from pathlib import Path
 
 logging.basicConfig(
     level=logging.INFO,
@@ -233,6 +234,50 @@ class FileCryptBypass:
 
         return None
 
+    def save_session(self, path: str = 'filecrypt_session.json') -> str:
+        """Salva cookies e metadados da sessão em JSON para retomada manual."""
+        payload = {
+            'version': 1,
+            'saved_at': time.time(),
+            'cookies': [
+                {
+                    'name': cookie.name,
+                    'value': cookie.value,
+                    'domain': cookie.domain,
+                    'path': cookie.path,
+                    'secure': cookie.secure,
+                    'expires': cookie.expires
+                }
+                for cookie in self.session.cookies
+            ],
+            'headers': {'User-Agent': self.session.headers.get('User-Agent', '')}
+        }
+        output = Path(path)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        with output.open('w', encoding='utf-8') as f:
+            json.dump(payload, f, indent=2, ensure_ascii=False)
+        self._log_evidence('session_saved', {'path': str(output), 'cookies': len(payload['cookies'])})
+        return str(output)
+
+    def load_session(self, path: str = 'filecrypt_session.json') -> int:
+        """Restaura cookies previamente salvos; não executa nenhuma verificação."""
+        input_path = Path(path)
+        with input_path.open('r', encoding='utf-8') as f:
+            payload = json.load(f)
+        cookies = payload.get('cookies', [])
+        restored = 0
+        for item in cookies:
+            if not item.get('name') or item.get('value') is None:
+                continue
+            self.session.cookies.set(
+                item['name'], item['value'],
+                domain=item.get('domain') or '',
+                path=item.get('path') or '/'
+            )
+            restored += 1
+        self._log_evidence('session_loaded', {'path': str(input_path), 'cookies': restored})
+        return restored
+
     def _result_after_session_refresh(self, filecrypt_url: str, attempt: int) -> Optional[BypassResult]:
         """Tenta novamente usando a mesma sessão/cookies já existentes.
 
@@ -407,16 +452,46 @@ class FileCryptBypass:
 
 
 if __name__ == "__main__":
-    import sys
+    import argparse
 
-    if len(sys.argv) < 2:
-        print("Uso: python filecrypt_bypass.py <url_filecrypt>")
-        print("Exemplo: python filecrypt_bypass.py https://filecrypt.co/Container/ABC123.html")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(
+        description='Inspeciona e retoma sessões FileCrypt após verificação manual.'
+    )
+    parser.add_argument('url', help='URL do Container FileCrypt')
+    parser.add_argument('--session', default='filecrypt_session.json',
+                        help='Arquivo JSON usado para persistir os cookies da sessão')
+    parser.add_argument('--load-session', action='store_true',
+                        help='Carrega a sessão salva antes da requisição')
+    parser.add_argument('--save-session', action='store_true',
+                        help='Salva a sessão após a requisição')
+    parser.add_argument('--retry', action='store_true',
+                        help='Após a carga inicial, faz uma nova tentativa usando a mesma sessão')
+    parser.add_argument('--attempts', type=int, default=1,
+                        help='Número de tentativas no --retry (máx. 3)')
+    args = parser.parse_args()
 
-    url = sys.argv[1]
     bypass = FileCryptBypass()
-    result = bypass.bypass(url)
+
+    if args.load_session:
+        try:
+            restored = bypass.load_session(args.session)
+            print(f'Sessão restaurada: {restored} cookies')
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            print(f'Não foi possível carregar a sessão: {exc}')
+            sys.exit(1)
+
+    result = bypass.bypass(args.url)
+
+    if args.save_session:
+        try:
+            saved = bypass.save_session(args.session)
+            print(f'Sessão salva em: {saved}')
+        except OSError as exc:
+            print(f'Não foi possível salvar a sessão: {exc}')
+
+    if args.retry and not result.success:
+        print('\nTentando retomar a mesma sessão...')
+        result = bypass.retry_after_verification(args.url, args.attempts)
 
     print("\n" + "="*60)
     print("RESULTADO DO BYPASS")
@@ -430,7 +505,6 @@ if __name__ == "__main__":
         print(f"Erro: {result.error_message}")
 
     print(f"\nEvidências registradas: {len(result.evidence_log)} entradas")
-
-    with open('bypass_evidence.json', 'w') as f:
-        json.dump(result.evidence_log, f, indent=2, default=str)
+    with open('bypass_evidence.json', 'w', encoding='utf-8') as f:
+        json.dump(result.evidence_log, f, indent=2, default=str, ensure_ascii=False)
     print("Evidências salvas em: bypass_evidence.json")
