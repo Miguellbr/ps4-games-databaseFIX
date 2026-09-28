@@ -1,81 +1,134 @@
-const BASE='https://store.playstation.com/store/api/chihiro/00_09_000/titlecontainer';
+const BASE = 'https://store.playstation.com/store/api/chihiro/00_09_000/titlecontainer';
 
-function normalizeId(value){
-  const s=String(value||'').trim().toUpperCase().replace(/_00$/,'');
-  const m=s.match(/CUSA\d{5}/);
-  return m?m[0]:'';
+function normalizeId(value) {
+  const s = String(value || '').trim().toUpperCase().replace(/_00$/, '');
+  const m = s.match(/CUSA\d{5}/);
+  return m ? m[0] : '';
 }
 
-async function fetchLocale(id,country,language){
-  const url=`${BASE}/${country}/${language}/999/${id}_00`;
-  try{
-    const r=await fetch(url,{headers:{'User-Agent':'PS4-Games-Database-Metadata/1.0','Accept':'application/json'}});
-    if(!r.ok)return null;
-    const data=await r.json();
-    const description=findText(data,['description','long_description','short_description']);
-    const name=findText(data,['name','title']);
-    const contentId=findContentId(data);
-    return {description,name,contentId};
-  }catch(_){return null;}
+async function fetchLocale(id, country, language) {
+  const url = `${BASE}/${country.toUpperCase()}/${language.toLowerCase()}/999/${id}_00`;
+  try {
+    const r = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 PS4-Games-Database',
+        'Accept': 'application/json'
+      }
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch (_) {
+    return null;
+  }
 }
 
-function findText(node,keys){
-  if(!node)return '';
-  if(Array.isArray(node)){
-    for(const value of node){const v=findText(value,keys);if(v)return v;}
+function findText(node, keys) {
+  if (!node) return '';
+  if (Array.isArray(node)) {
+    for (const value of node) {
+      const v = findText(value, keys);
+      if (v) return v;
+    }
     return '';
   }
-  if(typeof node==='object'){
-    for(const key of keys){
-      if(typeof node[key]==='string'&&node[key].trim())return node[key].trim().replace(/\s+/g,' ');
+  if (typeof node !== 'object') return '';
+
+  for (const key of keys) {
+    const value = node[key];
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim().replace(/\s+/g, ' ');
     }
-    for(const value of Object.values(node)){const v=findText(value,keys);if(v)return v;}
+  }
+
+  for (const value of Object.values(node)) {
+    const v = findText(value, keys);
+    if (v) return v;
   }
   return '';
 }
 
-function findContentId(node){
-  if(!node)return '';
-  if(Array.isArray(node)){
-    for(const value of node){const v=findContentId(value);if(v)return v;}
+function findImage(node) {
+  if (!node) return '';
+  if (Array.isArray(node)) {
+    for (const value of node) {
+      const v = findImage(value);
+      if (v) return v;
+    }
     return '';
   }
-  if(typeof node==='object'){
-    for(const key of ['product_id','productId','content_id','contentId','id']){
-      const v=node[key];
-      if(typeof v==='string'&&v.includes('-')&&v.length>=25)return v;
-    }
-    for(const value of Object.values(node)){const v=findContentId(value);if(v)return v;}
+  if (typeof node !== 'object') return '';
+
+  if (Array.isArray(node.images)) {
+    const preferred = node.images.find(x => x && x.url && [1, 12, 13].includes(Number(x.type)));
+    if (preferred?.url) return preferred.url;
+    const first = node.images.find(x => x && typeof x.url === 'string');
+    if (first?.url) return first.url;
+  }
+
+  for (const value of Object.values(node)) {
+    const v = findImage(value);
+    if (v) return v;
   }
   return '';
 }
 
-async function one(id){
-  const en=await fetchLocale(id,'us','en');
-  const pt=await fetchLocale(id,'br','pt');
-  const ptFallback=pt||await fetchLocale(id,'pt','pt');
+async function one(id) {
+  const [en, pt] = await Promise.all([
+    fetchLocale(id, 'US', 'en'),
+    fetchLocale(id, 'BR', 'pt')
+  ]);
+
+  const ptData = pt || await fetchLocale(id, 'PT', 'pt');
+  const enData = en || await fetchLocale(id, 'GB', 'en');
+
+  const descriptionKeys = [
+    'description',
+    'long_description',
+    'longDescription',
+    'long_desc',
+    'short_description',
+    'shortDescription',
+    'short_desc',
+    'synopsis'
+  ];
+
+  const cover =
+    findImage(enData) ||
+    findImage(ptData) ||
+    `${BASE}/US/en/999/${id}_00/image`;
+
   return {
-    title_id:id,
-    cover_url:`${BASE}/us/en/999/${id}_00/image`,
-    description_en:en?.description||'',
-    description_pt:ptFallback?.description||'',
-    metadata_source:'PlayStation Store',
-    metadata_content_id:en?.contentId||ptFallback?.contentId||''
+    title_id: id,
+    cover_url: cover,
+    description_en: findText(enData, descriptionKeys),
+    description_pt: findText(ptData, descriptionKeys),
+    metadata_source: 'PlayStation Store'
   };
 }
 
-export default async function handler(request){
-  const url=new URL(request.url);
-  const ids=[...new Set((url.searchParams.get('ids')||'').split(',').map(normalizeId).filter(Boolean))].slice(0,20);
-  if(!ids.length)return Response.json({games:[]},{status:400});
-  const games=[];
-  for(let i=0;i<ids.length;i+=4){
-    const batch=await Promise.all(ids.slice(i,i+4).map(one));
-    games.push(...batch);
-  }
-  return Response.json({games},{
-    headers:{
-      'Cache-Control':'public, s-maxage=86400, stale-while-revalidate=604800'
+module.exports = async function handler(req, res) {
+  try {
+    const raw = new URL(req.url, 'https://ps4-games-database-fix.vercel.app')
+      .searchParams.get('ids') || '';
+
+    const ids = [...new Set(
+      raw.split(',').map(normalizeId).filter(Boolean)
+    )].slice(0, 20);
+
+    if (!ids.length) {
+      return res.status(400).json({ games: [], error: 'No valid CUSA IDs' });
     }
-  });
-}
+
+    const games = [];
+    for (let i = 0; i < ids.length; i += 4) {
+      const batch = await Promise.all(ids.slice(i, i + 4).map(one));
+      games.push(...batch);
+    }
+
+    res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=604800');
+    return res.status(200).json({ games });
+  } catch (error) {
+    console.error('PS4 metadata error:', error);
+    return res.status(500).json({ games: [], error: 'Metadata service failed' });
+  }
+};
