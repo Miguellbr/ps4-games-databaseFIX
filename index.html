@@ -102,7 +102,7 @@ function getCusaId(game){return extractCusa(game?.title_id||game?.titleId||game?
 function coverFromLegacyLibrary(id){const c=extractCusa(id);return c?'https://dn710101.ca.archive.org/0/items/ps4-fpkg-collection-english-icons/'+c+'.png':'';}let legacyCatalogPromise=null;
 async function applyLegacyCatalog(games){
   if(!legacyCatalogPromise){
-    legacyCatalogPromise=fetch('./legacy_catalog.json?legacy=1',{cache:'force-cache'})
+    legacyCatalogPromise=fetch('./catalog.json?legacy=1',{cache:'force-cache'})
       .then(r=>r.ok?r.json():{games:[]}).catch(()=>({games:[]}));
   }
   const data=await legacyCatalogPromise;
