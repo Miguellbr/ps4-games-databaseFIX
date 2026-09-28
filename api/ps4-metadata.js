@@ -72,6 +72,40 @@ function findImage(node) {
   return '';
 }
 
+const TUMBLER = 'https://store.playstation.com/store/api/chihiro/00_09_000/tumbler/SA/en/999';
+
+function normalizeName(value) {
+  return String(value || '').replace(/[®™]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+function findMatchingCusa(node, wantedName) {
+  const wanted = normalizeName(wantedName), seen = new Set();
+  function walk(value, depth) {
+    if (depth > 7 || value == null) return '';
+    if (typeof value === 'string') return normalizeId(value);
+    if (typeof value !== 'object' || seen.has(value)) return '';
+    seen.add(value);
+    const strings = Object.values(value).filter(v => typeof v === 'string');
+    const hasWanted = strings.some(v => { const n=normalizeName(v); return n===wanted || n.includes(wanted) || wanted.includes(n); });
+    if (hasWanted) { for (const s of strings) { const id=normalizeId(s); if(id)return id; } }
+    for (const child of Object.values(value)) { const id=walk(child,depth+1); if(id)return id; }
+    return '';
+  }
+  return walk(node,0);
+}
+
+async function resolveName(name) {
+  const clean=String(name||'').trim(); if(!clean)return null;
+  try {
+    const q=encodeURIComponent(clean.replace(/\s+/g,'_'));
+    const url=TUMBLER+'/'+q+'?suggested_size=20&mode=game';
+    const r=await fetch(url,{headers:{'User-Agent':'Mozilla/5.0 PS4-Games-Database','Accept':'application/json'}});
+    if(!r.ok)return null;
+    const data=await r.json(), id=findMatchingCusa(data,clean);
+    return id?{name:clean,title_id:id}:null;
+  } catch (_) { return null; }
+}
+
 async function one(id) {
   const [en, pt] = await Promise.all([
     fetchLocale(id, 'US', 'en'),
@@ -113,17 +147,26 @@ module.exports = async function handler(req, res) {
       ? (rawValue[0] || '')
       : String(rawValue || '');
 
-    const ids = [...new Set(
-      raw.split(',').map(normalizeId).filter(Boolean)
-    )].slice(0, 20);
-
-    if (!ids.length) {
-      return res.status(400).json({ games: [], error: 'No valid CUSA IDs' });
+    const ids = [...new Set(raw.split(',').map(normalizeId).filter(Boolean))].slice(0, 20);
+    let names = [];
+    const rawNames = req.query && req.query.names;
+    if (rawNames) {
+      try {
+        const parsed = JSON.parse(Array.isArray(rawNames) ? rawNames[0] : String(rawNames));
+        if (Array.isArray(parsed)) names = parsed.map(x => String(x || '').trim()).filter(Boolean).slice(0, 20);
+      } catch (_) {}
     }
-
+    const resolved = [];
+    for (let i = 0; i < names.length; i += 4) {
+      const batch = await Promise.all(names.slice(i, i + 4).map(resolveName));
+      resolved.push(...batch.filter(Boolean));
+    }
+    for (const item of resolved) if (!ids.includes(item.title_id)) ids.push(item.title_id);
+    const limitedIds = ids.slice(0, 20);
+    if (!limitedIds.length) return res.status(400).json({ games: [], error: 'No valid CUSA IDs or game names' });
     const games = [];
-    for (let i = 0; i < ids.length; i += 4) {
-      const batch = await Promise.all(ids.slice(i, i + 4).map(one));
+    for (let i = 0; i < limitedIds.length; i += 4) {
+      const batch = await Promise.all(limitedIds.slice(i, i + 4).map(one));
       games.push(...batch);
     }
 
