@@ -96,9 +96,9 @@ class FileCryptBypass:
             m = re.search(pattern, html, re.IGNORECASE)
             return m.group(1) if m else None
 
-        pow_id = first(r'(?:name|id)=["']pow_id["'][^>]*value=["']([^"']+)')
-        algorithm = first(r'(?:name|id)=["']pow_algorithm["'][^>]*value=["']([^"']+)')
-        difficulty_raw = first(r'(?:name|id)=["']pow_difficulty["'][^>]*value=["'](\d+)')
+        pow_id = first(r"(?:name|id)=[\"']pow_id[\"'][^>]*value=[\"']([^\"']+)")
+        algorithm = first(r"(?:name|id)=[\"']pow_algorithm[\"'][^>]*value=[\"']([^\"']+)")
+        difficulty_raw = first(r"(?:name|id)=[\"']pow_difficulty[\"'][^>]*value=[\"'](\d+)")
 
         self._log_evidence('challenge_detection', {
             'markers': detected,
@@ -112,8 +112,8 @@ class FileCryptBypass:
             pow_id=pow_id,
             algorithm=(algorithm or 'unknown').lower(),
             difficulty=int(difficulty_raw or 0),
-            prefix=first(r'(?:name|id)=["']pow_prefix["'][^>]*value=["']([^"']*)') or '',
-            suffix=first(r'(?:name|id)=["']pow_suffix["'][^>]*value=["']([^"']*)') or '',
+            prefix=first(r"(?:name|id)=[\"']pow_prefix[\"'][^>]*value=[\"']([^\"']*)") or '',
+            suffix=first(r"(?:name|id)=[\"']pow_suffix[\"'][^>]*value=[\"']([^\"']*)") or '',
             extra_params={}
         )
 
@@ -150,7 +150,7 @@ class FileCryptBypass:
         if html:
             patterns = [
                 r'https?://[^"'<>s]+(?:mediafire\.com|1file\.com|1fichier\.com)[^"'<>s]*',
-                r'(?:href|data-url|location|redirect|url)\s*=\s*["'](https?://[^"']+)'
+                r"(?:href|data-url|location|redirect|url)\s*=\s*[\"'](https?://[^\"']+)"
             ]
             for pattern in patterns:
                 candidates.extend(re.findall(pattern, html, re.IGNORECASE))
