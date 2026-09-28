@@ -102,6 +102,7 @@ async function resolveName(name) {
     const r=await fetch(url,{headers:{'User-Agent':'Mozilla/5.0 PS4-Games-Database','Accept':'application/json'}});
     if(!r.ok)return null;
     const data=await r.json(), id=findMatchingCusa(data,clean);
+    console.info('[PS4META] resolveName', JSON.stringify({name:clean,status:r.status,found:id||null}));
     return id?{name:clean,title_id:id}:null;
   } catch (_) { return null; }
 }
@@ -130,6 +131,8 @@ async function one(id) {
     findImage(enData) ||
     findImage(ptData) ||
     `${BASE}/US/en/999/${id}_00/image`;
+
+  console.info('[PS4META] one', JSON.stringify({id,en:!!enData,pt:!!ptData,enText:!!findText(enData, descriptionKeys),ptText:!!findText(ptData, descriptionKeys)}));
 
   return {
     title_id: id,
