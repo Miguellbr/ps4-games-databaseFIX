@@ -16,40 +16,62 @@ logger = logging.getLogger(__name__)
 
 def extract_filecrypt_from_catalog(catalog_path: Path) -> Dict[str, dict]:
     """
-    Extrai todos os links FileCrypt do catalog.json
-    Retorna: {link_id: {game_title, host, index, url}}
+    Extrai links FileCrypt dos formatos usados pelo projeto.
+
+    catalog.json é um catálogo de capas/Title IDs e normalmente não contém
+    download_links. A biblioteca com links é ps4_games_expanded.json (ou um
+    JSON importado no formato DATA/games).
     """
     with open(catalog_path, 'r', encoding='utf-8') as f:
-        catalog = json.load(f)
-    
-    games = catalog.get('games', [])
+        data = json.load(f)
+
     filecrypt_links = {}
-    
-    for game in games:
-        title = game.get('title', 'unknown')
+
+    def add_game(game: dict):
+        title = game.get('title') or game.get('name') or game.get('game_name') or 'unknown'
         dlps_url = game.get('dlps_url', '')
-        
-        # Se houver download_links (dados importados/normalizados)
-        download_links = game.get('download_links', {})
-        
+        download_links = game.get('download_links') or {}
+
         for host in ['mediafire', '1file', 'other', 'pkg']:
             urls = download_links.get(host, [])
             if not isinstance(urls, list):
                 urls = [urls] if urls else []
-            
             for idx, url in enumerate(urls):
-                if url and 'filecrypt' in url.lower():
+                if isinstance(url, str) and 'filecrypt' in url.lower():
                     link_id = f"{title}__{host}__{idx}"
                     filecrypt_links[link_id] = {
                         'game_title': title,
-                        'title_id': game.get('title_id', ''),
+                        'title_id': game.get('title_id') or game.get('titleId') or '',
                         'host': host,
                         'index': idx,
                         'url': url,
                         'dlps_url': dlps_url
                     }
                     logger.info(f"Found FileCrypt: {link_id}")
-    
+
+    # Formato DATA: {"DATA": {"url": {...}, ...}}
+    if isinstance(data, dict) and isinstance(data.get('DATA'), dict):
+        for url, item in data['DATA'].items():
+            item = item if isinstance(item, dict) else {}
+            item = dict(item)
+            links = item.get('download_links') or {}
+            if not links and url:
+                links = {'pkg': [url]}
+            item['download_links'] = links
+            add_game(item)
+
+    # Formato {"games": [...]}
+    elif isinstance(data, dict) and isinstance(data.get('games'), list):
+        for game in data['games']:
+            if isinstance(game, dict):
+                add_game(game)
+
+    # Formato lista de jogos
+    elif isinstance(data, list):
+        for game in data:
+            if isinstance(game, dict):
+                add_game(game)
+
     return filecrypt_links
 
 
@@ -158,7 +180,7 @@ if __name__ == "__main__":
     import argparse
     
     parser = argparse.ArgumentParser(description="Resolve FileCrypt in catalog")
-    parser.add_argument('--catalog', default='catalog.json')
+    parser.add_argument('--catalog', default='ps4_games_expanded.json')
     parser.add_argument('--output', default='src/data/resolved_links.json')
     parser.add_argument('--update-catalog', action='store_true')
     parser.add_argument('--test', action='store_true', help='Test with 3 links')
