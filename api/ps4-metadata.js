@@ -117,29 +117,89 @@ function findMatchingCusa(node, wantedName) {
   let best = { id: '', score: 0 };
   const seen = new Set();
 
-  function walk(value, depth) {
-    if (depth > 10 || value == null) return;
-    if (typeof value !== 'object' || seen.has(value)) return;
+  function subtree(value, depth) {
+    if (depth > 12 || value == null) return { score: 0, ids: new Set() };
+    if (typeof value === 'string') {
+      const id = normalizeId(value);
+      return { score: 0, ids: id ? new Set([id]) : new Set() };
+    }
+    if (typeof value !== 'object' || seen.has(value)) return { score: 0, ids: new Set() };
     seen.add(value);
 
-    const candidates = collectCusas(value, new Set(), 0, new Set());
-    const strings = Object.values(value).filter(v => typeof v === 'string');
     let score = 0;
-    for (const s of strings) score = Math.max(score, nameScore(s, wantedName));
+    const ids = new Set();
 
-    // Prefer a CUSA found in the same result object as the matching title.
-    if (score > 0 && candidates.size) {
-      for (const id of candidates) {
-        const bonus = score === 100 ? 10 : 0;
-        if (score + bonus > best.score) best = { id, score: score + bonus };
+    for (const [key, child] of Object.entries(value)) {
+      if (typeof child === 'string') {
+        const id = normalizeId(child);
+        if (id) ids.add(id);
+        score = Math.max(score, nameScore(child, wantedName));
+        if (/cusa|title.?id|product.?id|content.?id|concept.?id|sku/i.test(key) && id) ids.add(id);
+      } else {
+        const sub = subtree(child, depth + 1);
+        score = Math.max(score, sub.score);
+        for (const id of sub.ids) ids.add(id);
       }
     }
 
-    for (const child of Object.values(value)) walk(child, depth + 1);
+    return { score, ids };
   }
 
-  walk(node, 0);
+  function walk(value, depth) {
+    if (depth > 12 || value == null || typeof value !== 'object' || seen.has(value)) return;
+    const result = subtree(value, depth);
+    if (result.score > 0 && result.ids.size) {
+      for (const id of result.ids) {
+        const exactBonus = result.score === 100 ? 20 : 0;
+        const score = result.score + exactBonus;
+        if (score > best.score) best = { id, score };
+      }
+    }
+  }
+
+  // Evaluate likely result objects first, then the whole response.
+  if (Array.isArray(node)) {
+    for (const item of node) walk(item, 0);
+  } else {
+    walk(node, 0);
+  }
   return best.id;
+}
+
+async function resolveName(name) {
+  const clean=String(name||'').trim(); if(!clean)return null;
+  const variants = [...new Set([
+    clean,
+    clean.replace(/[#]/g, ''),
+    clean.replace(/[®™]/g, ''),
+    clean.replace(/[:'’&]/g, ' '),
+    clean.replace(/[-_]/g, ' ')
+  ].map(x => x.replace(/\\s+/g, ' ').trim()).filter(Boolean))];
+
+  const regions = [
+    ['SA','en'],
+    ['US','en'],
+    ['GB','en'],
+    ['BR','pt']
+  ];
+
+  try {
+    let best = null;
+    for (const [country, language] of regions) {
+      for (const variant of variants) {
+        const q=encodeURIComponent(variant.replace(/\\s+/g,'_'));
+        const url=TUMBLER.replace('/SA/en/','/' + country + '/' + language + '/') + '/' + q + '?suggested_size=50&mode=game';
+        const r=await fetch(url,{headers:{'User-Agent':'Mozilla/5.0 PS4-Games-Database','Accept':'application/json'}});
+        if(!r.ok)continue;
+        const data=await r.json();
+        const id=findMatchingCusa(data,clean);
+        if(id) {
+          return {name:clean,title_id:id};
+        }
+      }
+    }
+    return best;
+  } catch (_) { return null; }
 }
 
 async function resolveName(name) {
