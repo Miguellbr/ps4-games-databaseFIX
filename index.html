@@ -85,7 +85,7 @@ let currentMode = 'all';
 const BATCH_SIZE = 100;
 let renderGeneration = 0;
 let renderTimer = null;
-const DB_CACHE_NAME='ps4db-index-v9-metadata';
+const DB_CACHE_NAME='ps4db-index-v10-metadata';
 const DB_CACHE_VERSION=1;
 const EXPECTED_GAME_COUNT=17065;
 let dbCachePromise=null;
@@ -98,7 +98,23 @@ const getFavorites=()=>JSON.parse(localStorage.getItem(FAVORITES_KEY)||'[]'); co
 async function loadGames(){try{await new Promise(requestAnimationFrame);const cached=await readDatabaseCache();if(cached.length>=EXPECTED_GAME_COUNT){allGames=await applyLegacyCatalog(cached.map(normalizeMainGame));filteredGames=[...allGames];renderedCount=0;document.getElementById('gamesContainer').innerHTML='';document.getElementById('searchInfo').textContent='Biblioteca carregada do cache local: '+allGames.length.toLocaleString()+' jogos';rebuildLibraryBar();rebuildRegionFilter();buildAlphaNav();updateStats();renderBatch();return;}document.getElementById('gamesContainer').innerHTML='<div class="loading">Baixando e indexando a biblioteca completa...</div>';document.getElementById('searchInfo').textContent='Cache incompleto ou ausente. Reindexando o JSON completo...';const response=await fetch('./ps4_games_expanded.json?index='+Date.now(),{cache:'no-store'});if(!response.ok)throw new Error('HTTP '+response.status);const data=await response.json();const parsedGames=parseImportedJSON(data,'main');const enrichedGames=await applyLegacyCatalog(parsedGames);const count=Array.isArray(enrichedGames)?enrichedGames.length:0;if(count<EXPECTED_GAME_COUNT){await clearDatabaseCache();throw new Error('Validação falhou: '+count.toLocaleString()+' registros; esperado pelo menos '+EXPECTED_GAME_COUNT.toLocaleString()+'.');}allGames=enrichedGames.map(normalizeMainGame);filteredGames=[...allGames];renderedCount=0;await writeDatabaseCache(allGames);const verified=await readDatabaseCache();if(verified.length!==allGames.length){await clearDatabaseCache();throw new Error('Cache pós-gravação incompleto: '+verified.length+' de '+allGames.length+'.');}rebuildLibraryBar();rebuildRegionFilter();buildAlphaNav();updateStats();renderedCount=0;renderBatch();}catch(error){document.getElementById('gamesContainer').innerHTML='<div class="empty-state"><h3 style="color:var(--text);margin-bottom:8px">Não foi possível carregar a biblioteca completa</h3><p>'+String(error.message||error).replace(/</g,'&lt;')+'</p><p style="margin-top:10px">O site não aceita nem salva um catálogo incompleto.</p></div>';document.getElementById('searchInfo').textContent='Falha na validação da biblioteca';console.error('PS4 Database:',error);}}
 
 function extractCusa(value){const m=String(value||'').toUpperCase().match(/CUSA\d{5}/);return m?m[0]:'';}
-function getCusaId(game){return extractCusa(game?.title_id||game?.titleId||game?.content_id||game?.contentId||game?.id||game?.metadata_content_id||'');}
+function getCusaId(game){
+  const direct=extractCusa(game?.title_id||game?.titleId||game?.content_id||game?.contentId||game?.id||game?.metadata_content_id||'');
+  if(direct)return direct;
+  const seen=new Set();
+  function scan(value,depth){
+    if(depth>3||value==null)return '';
+    if(typeof value==='string')return extractCusa(value);
+    if(typeof value!=='object'||seen.has(value))return '';
+    seen.add(value);
+    for(const key of Object.keys(value)){
+      const found=scan(value[key],depth+1);
+      if(found)return found;
+    }
+    return '';
+  }
+  return scan(game,0);
+}
 function coverFromLegacyLibrary(id){const c=extractCusa(id);return c?'https://store.playstation.com/store/api/chihiro/00_09_000/titlecontainer/US/en/999/'+c+'_00/image?w=512&h=512&bg_color=000000&opacity=100':'';}let legacyCatalogPromise=null;
 async function applyLegacyCatalog(games){
   if(!legacyCatalogPromise){
@@ -250,7 +266,16 @@ function renderBatch(start=renderedCount, generation=renderGeneration){
 function loadNextBatchIfNeeded(){}
 
 const metadataQueue=[];const metadataQueued=new Set();let metadataWorkerRunning=false;
-function queueMetadataGames(games){for(const game of games||[]){const id=getCusaId(game);if(!id||metadataQueued.has(id)||(game.description_en&&game.description_pt&&game.cover_url))continue;game.title_id=id;metadataQueued.add(id);metadataQueue.push(game);}runMetadataWorker();}
+function queueMetadataGames(games){
+  for(const game of games||[]){
+    const id=getCusaId(game);
+    if(!id||metadataQueued.has(id))continue;
+    game.title_id=id;
+    metadataQueued.add(id);
+    metadataQueue.push(game);
+  }
+  runMetadataWorker();
+}
 async function runMetadataWorker(){if(metadataWorkerRunning)return;metadataWorkerRunning=true;while(metadataQueue.length){const batch=metadataQueue.splice(0,5);const ids=[...new Set(batch.map(getCusaId).filter(Boolean))];try{const r=await fetch('./api/ps4-metadata?ids='+encodeURIComponent(ids.join(',')),{cache:'no-store'});if(!r.ok)throw new Error('metadata HTTP '+r.status);const data=await r.json();const byId=new Map((data.games||[]).map(x=>[String(x.title_id||'').toUpperCase(),x]));for(const game of batch){const id=getCusaId(game),meta=byId.get(id);document.querySelectorAll('.game-item[data-title-id="'+id+'"]').forEach(card=>{const box=card.querySelector('[data-description-box]');if(!meta){if(box)box.innerHTML='<b>EN:</b> Não disponível <span>•</span> <b>PT:</b> Não disponível';return;}Object.assign(game,meta,{description:game.description||meta.description_en||''});if(box){const en=game.description_en||game.description||'';const pt=game.description_pt||'';box.innerHTML=(en?'<b>EN:</b> '+String(en).replace(/</g,'&lt;'):'<b>EN:</b> Não disponível')+' <span>•</span> '+(pt?'<b>PT:</b> '+String(pt).replace(/</g,'&lt;'):'<b>PT:</b> Não disponível');}if(meta.cover_url){
   let img=card.querySelector('.game-cover');
   if(!img){img=document.createElement('img');img.className='game-cover';img.alt='Capa de '+game.name;img.loading='lazy';card.prepend(img);}
