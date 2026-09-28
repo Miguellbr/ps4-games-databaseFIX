@@ -104,7 +104,9 @@ function getCatalogByName() {
 const KNOWN_TITLE_IDS = new Map([
   ['#killallzombies', 'CUSA00856'],
   ['killallzombies', 'CUSA00856'],
-  ['0 degrees', 'CUSA27424']
+  ['0 degrees', 'CUSA27424'],
+  ['risk of rain', 'CUSA04192'],
+  ['risk of rain 2', 'CUSA16153']
 ]);
 
 function normalizeName(value) {
