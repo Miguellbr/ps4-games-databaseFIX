@@ -1,0 +1,19 @@
+{
+  "name": "ps4-games-database",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PS4 Games Database web app and Android APK",
+  "scripts": {
+    "cap:add": "npx cap add android",
+    "cap:sync": "npx cap sync android",
+    "cap:open": "npx cap open android",
+    "apk:debug": "npx cap sync android && cd android && ./gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/core": "^7.4.4"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.4.4",
+    "@capacitor/android": "^7.4.4"
+  }
+}
