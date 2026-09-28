@@ -1,5 +1,6 @@
 name: Build Android APK
 
+
 on:
   workflow_dispatch:
   push:
@@ -34,8 +35,6 @@ jobs:
           java-version: '21'
       - name: Install dependencies
         run: npm install
-      - name: Prepare web assets
-        run: mkdir -p www && rsync -a --exclude '.git' --exclude 'node_modules' --exclude 'android' --exclude 'www' ./ www/
       - name: Create Android project
         run: npx cap add android
       - name: Sync Capacitor
@@ -43,12 +42,6 @@ jobs:
       - name: Build debug APK
         working-directory: android
         run: ./gradlew assembleDebug
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ps4-games-database-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
-
       - name: Publish APK release
         uses: softprops/action-gh-release@v2
         with:
