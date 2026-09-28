@@ -72,7 +72,7 @@ function findImage(node) {
   return '';
 }
 
-const TUMBLER = 'https://store.playstation.com/store/api/chihiro/00_09_000/tumbler/SA/en/999';
+const TUMBLER = 'https://store.playstation.com/store/api/chihiro/00_09_000/tumbler/US/en/999';
 
 // The catalog already contains verified PS4 Title IDs for the site's games.
 // Use it before the PlayStation Store name search so catalog names do not
@@ -87,9 +87,9 @@ function getCatalogByName() {
       const id = normalizeId(game?.title_id);
       const name = normalizeName(game?.title);
       if (!id || !name) continue;
-      const current = catalogByName.get(name);
-      // Prefer the USA release when the catalog has multiple regional CUSAs.
-      if (!current || String(game?.region || '').toUpperCase() === 'USA') {
+      // Only use an explicitly USA catalog entry as the canonical CUSA.
+      // EUR/JPN/etc. entries must not become the site's canonical ID.
+      if (String(game?.region || '').toUpperCase() === 'USA') {
         catalogByName.set(name, id);
       }
     }
