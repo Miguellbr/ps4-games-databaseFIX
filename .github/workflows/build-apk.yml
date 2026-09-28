@@ -34,6 +34,8 @@ jobs:
           java-version: '21'
       - name: Install dependencies
         run: npm install
+      - name: Prepare web assets
+        run: mkdir -p www && rsync -a --exclude '.git' --exclude 'node_modules' --exclude 'android' --exclude 'www' ./ www/
       - name: Create Android project
         run: npx cap add android
       - name: Sync Capacitor
