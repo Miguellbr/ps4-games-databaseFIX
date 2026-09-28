@@ -42,6 +42,11 @@ jobs:
           if ls *.css >/dev/null 2>&1; then cp *.css www/; fi
       - name: Create Android project
         run: npx cap add android
+      - name: Install native DPI bridge
+        run: |
+          mkdir -p android/app/src/main/java/com/miguellbr/ps4gamesdatabase
+          cp native/android/MainActivity.java android/app/src/main/java/com/miguellbr/ps4gamesdatabase/MainActivity.java
+          sed -i 's#<application #<application android:usesCleartextTraffic="true" #' android/app/src/main/AndroidManifest.xml
       - name: Sync Capacitor
         run: npx cap sync android
       - name: Set APK version code
