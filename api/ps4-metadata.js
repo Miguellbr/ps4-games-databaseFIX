@@ -74,37 +74,112 @@ function findImage(node) {
 
 const TUMBLER = 'https://store.playstation.com/store/api/chihiro/00_09_000/tumbler/SA/en/999';
 
+// Some older/delisted PS4 titles are not returned by the current Store search index.
+// These are verified Title IDs and are used only as a fallback when name search fails.
+const KNOWN_TITLE_IDS = new Map([
+  ['#killallzombies', 'CUSA00856'],
+  ['killallzombies', 'CUSA00856'],
+  ['0 degrees', 'CUSA27424']
+]);
+
 function normalizeName(value) {
-  return String(value || '').replace(/[®™]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+  return String(value || '')
+    .replace(/[®™©]/g, '')
+    .replace(/[’‘]/g, "'")
+    .replace(/[–—]/g, '-')
+    .replace(/[_]+/g, ' ')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+function nameVariants(value) {
+  const raw = String(value || '').trim();
+  const normalized = normalizeName(raw);
+  const variants = [
+    raw,
+    raw.replace(/^#+/, ''),
+    raw.replace(/[®™©]/g, ''),
+    raw.replace(/^#+/, '').replace(/[®™©]/g, ''),
+    normalized
+  ];
+  return [...new Set(variants.map(x => String(x || '').trim()).filter(Boolean))];
 }
 
 function findMatchingCusa(node, wantedName) {
   const wanted = normalizeName(wantedName), seen = new Set();
+
   function walk(value, depth) {
-    if (depth > 7 || value == null) return '';
+    if (depth > 10 || value == null) return '';
     if (typeof value === 'string') return normalizeId(value);
     if (typeof value !== 'object' || seen.has(value)) return '';
     seen.add(value);
+
     const strings = Object.values(value).filter(v => typeof v === 'string');
-    const hasWanted = strings.some(v => { const n=normalizeName(v); return n===wanted || n.includes(wanted) || wanted.includes(n); });
-    if (hasWanted) { for (const s of strings) { const id=normalizeId(s); if(id)return id; } }
-    for (const child of Object.values(value)) { const id=walk(child,depth+1); if(id)return id; }
+    const hasWanted = strings.some(v => {
+      const n = normalizeName(v);
+      return n === wanted || n.includes(wanted) || wanted.includes(n);
+    });
+
+    if (hasWanted) {
+      for (const s of strings) {
+        const id = normalizeId(s);
+        if (id) return id;
+      }
+    }
+
+    for (const child of Object.values(value)) {
+      const id = walk(child, depth + 1);
+      if (id) return id;
+    }
     return '';
   }
-  return walk(node,0);
+
+  return walk(node, 0);
+}
+
+async function searchStoreName(name) {
+  const q = encodeURIComponent(String(name || '').trim().replace(/\s+/g, '_'));
+  if (!q) return '';
+  const url = TUMBLER + '/' + q + '?suggested_size=50&mode=game';
+
+  try {
+    const r = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 PS4-Games-Database',
+        'Accept': 'application/json'
+      }
+    });
+    if (!r.ok) return '';
+    const data = await r.json();
+    return findMatchingCusa(data, name);
+  } catch (_) {
+    return '';
+  }
 }
 
 async function resolveName(name) {
-  const clean=String(name||'').trim(); if(!clean)return null;
-  try {
-    const q=encodeURIComponent(clean.replace(/\s+/g,'_'));
-    const url=TUMBLER+'/'+q+'?suggested_size=20&mode=game';
-    const r=await fetch(url,{headers:{'User-Agent':'Mozilla/5.0 PS4-Games-Database','Accept':'application/json'}});
-    if(!r.ok)return null;
-    const data=await r.json(), id=findMatchingCusa(data,clean);
-    console.info('[PS4META] resolveName', JSON.stringify({name:clean,status:r.status,found:id||null}));
-    return id?{name:clean,title_id:id}:null;
-  } catch (_) { return null; }
+  const clean = String(name || '').trim();
+  if (!clean) return null;
+
+  const known = KNOWN_TITLE_IDS.get(normalizeName(clean));
+  if (known) {
+    console.info('[PS4META] resolveName', JSON.stringify({name: clean, method: 'known', found: known}));
+    return {name: clean, title_id: known};
+  }
+
+  const variants = nameVariants(clean);
+  for (const variant of variants) {
+    const id = await searchStoreName(variant);
+    if (id) {
+      console.info('[PS4META] resolveName', JSON.stringify({name: clean, variant, method: 'store', found: id}));
+      return {name: clean, title_id: id};
+    }
+  }
+
+  console.info('[PS4META] resolveName', JSON.stringify({name: clean, method: 'none', found: null}));
+  return null;
 }
 
 async function one(id) {
@@ -132,7 +207,13 @@ async function one(id) {
     findImage(ptData) ||
     `${BASE}/US/en/999/${id}_00/image`;
 
-  console.info('[PS4META] one', JSON.stringify({id,en:!!enData,pt:!!ptData,enText:!!findText(enData, descriptionKeys),ptText:!!findText(ptData, descriptionKeys)}));
+  console.info('[PS4META] one', JSON.stringify({
+    id,
+    en: !!enData,
+    pt: !!ptData,
+    enText: !!findText(enData, descriptionKeys),
+    ptText: !!findText(ptData, descriptionKeys)
+  }));
 
   return {
     title_id: id,
@@ -152,38 +233,52 @@ module.exports = async function handler(req, res) {
 
     const ids = [...new Set(raw.split(',').map(normalizeId).filter(Boolean))].slice(0, 20);
     let names = [];
+
     const rawNames = req.query && req.query.names;
     if (rawNames) {
       try {
         const parsed = JSON.parse(Array.isArray(rawNames) ? rawNames[0] : String(rawNames));
-        if (Array.isArray(parsed)) names = parsed.map(x => String(x || '').trim()).filter(Boolean).slice(0, 20);
+        if (Array.isArray(parsed)) {
+          names = parsed.map(x => String(x || '').trim()).filter(Boolean).slice(0, 20);
+        }
       } catch (_) {}
     }
+
     const resolved = [];
     for (let i = 0; i < names.length; i += 4) {
       const batch = await Promise.all(names.slice(i, i + 4).map(resolveName));
       resolved.push(...batch.filter(Boolean));
     }
-    for (const item of resolved) if (!ids.includes(item.title_id)) ids.push(item.title_id);
+
+    for (const item of resolved) {
+      if (!ids.includes(item.title_id)) ids.push(item.title_id);
+    }
+
     const limitedIds = ids.slice(0, 20);
-    if (!limitedIds.length) return res.status(400).json({ games: [], error: 'No valid CUSA IDs or game names' });
+    if (!limitedIds.length) {
+      return res.status(400).json({games: [], error: 'No valid CUSA IDs or game names'});
+    }
+
     const games = [];
+
     for (const item of resolved) {
       const meta = await one(item.title_id);
       if (meta) meta.requested_name = item.name;
       if (meta) games.push(meta);
     }
+
     const resolvedIds = new Set(resolved.map(x => x.title_id));
     const remainingIds = limitedIds.filter(id => !resolvedIds.has(id));
+
     for (let i = 0; i < remainingIds.length; i += 4) {
       const batch = await Promise.all(remainingIds.slice(i, i + 4).map(one));
       games.push(...batch);
     }
 
     res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=604800');
-    return res.status(200).json({ games });
+    return res.status(200).json({games});
   } catch (error) {
     console.error('PS4 metadata error:', error);
-    return res.status(500).json({ games: [], error: 'Metadata service failed' });
+    return res.status(500).json({games: [], error: 'Metadata service failed'});
   }
 };
