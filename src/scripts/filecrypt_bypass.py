@@ -138,7 +138,7 @@ class FileCryptBypass:
                 urls.append(value)
 
         # Endpoints internos do FileCrypt, como /Link/1, /Link/2, etc.
-        internal_links = sorted(set(re.findall(r'/Link/\\d+(?:[^\\s"\\'<>]*)?', html or '', re.IGNORECASE)))
+        internal_links = sorted(set(re.findall(r"/Link/\\d+(?:[^\\s\"'<>]*)?", html or '', re.IGNORECASE)))
 
         # Scripts relevantes para entender o fluxo, sem executá-los.
         scripts = sorted(set(re.findall(
