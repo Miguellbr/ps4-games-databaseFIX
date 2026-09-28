@@ -52,7 +52,30 @@ footer{padding:25px clamp(18px,4vw,48px);text-align:center;color:var(--muted);bo
 .modal{position:fixed;inset:0;background:rgba(2,5,10,.72);display:none;align-items:center;justify-content:center;padding:18px;z-index:1000;backdrop-filter:blur(8px)}.modal.show{display:flex}.modal-card{background:var(--panel);color:var(--text);border:1px solid var(--line);width:min(700px,100%);max-height:90vh;overflow:auto;border-radius:20px;padding:24px;position:relative;box-shadow:var(--shadow)}.modal-close{position:absolute;right:14px;top:12px;border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:10px;width:36px;height:36px;cursor:pointer;font-size:20px}.detail-title{color:var(--text);margin:0 48px 15px 0}.detail-cover{width:180px;max-height:250px;object-fit:cover;display:block;margin:0 auto 18px;border-radius:12px}.detail-row{padding:10px 0;border-bottom:1px solid var(--line);word-break:break-word}
 .menu-toggle{position:fixed;top:16px;left:16px;z-index:1200;width:44px;height:44px;border:1px solid rgba(255,255,255,.12);border-radius:12px;background:rgba(13,27,50,.9);color:#fff;font-size:20px;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.24)}.sidebar{position:fixed;left:0;top:0;bottom:0;width:310px;background:var(--panel);z-index:1100;transform:translateX(-105%);transition:transform .25s ease;box-shadow:18px 0 50px rgba(0,0,0,.3);padding:22px;overflow:auto;border-right:1px solid var(--line)}.sidebar.open{transform:translateX(0)}.sidebar h2{color:var(--text);margin:8px 0 22px}.sidebar-section{margin:18px 0;padding-top:15px;border-top:1px solid var(--line)}.side-btn{display:block;width:100%;text-align:left;border:1px solid transparent;background:var(--panel2);color:var(--text);padding:12px 14px;border-radius:10px;margin:7px 0;cursor:pointer;font-weight:650}.side-btn:hover{background:var(--panel3);border-color:var(--line)}.side-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1050;display:none}.side-overlay.show{display:block}.guide-content{line-height:1.6}.guide-content pre{white-space:pre-wrap;background:#080b12;color:#dbe6f7;padding:12px;border-radius:10px;font-size:12px;overflow:auto}.guide-content h3{margin:14px 0 7px;color:var(--accent2)}
 @media(max-width:768px){body{padding:8px}.container{border-radius:18px}header{padding:48px 18px 28px}header h1{font-size:2rem}.hero-subtitle{font-size:.9rem}.stats{display:grid;grid-template-columns:repeat(2,1fr)}.stat-item{min-width:0}.games-container{height:72vh;padding:14px 10px}.game-item{padding:15px}.game-title{font-size:16px}.game-cover{width:56px;height:76px}.download-btn{padding:7px 9px}.sidebar{width:min(310px,88vw)}.menu-toggle{top:10px;left:10px}.filter-select,.tool-btn{flex:1;min-width:120px}}
-.filter-heading{width:100%;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}.filter-row{display:flex;flex-wrap:wrap;gap:8px;width:100%}.filter-row select{flex:1;min-width:145px}.filter-actions{justify-content:flex-end}.az-filter{width:100%;padding-top:11px;border-top:1px solid var(--line)}.az-label{display:block;font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px}.az-filter .alpha-nav{padding:0;border:0;background:transparent;display:flex;gap:4px;overflow-x:auto}.az-filter .alpha-nav button{padding:5px 8px;border-radius:7px;font-size:12px}@media(max-width:768px){.filter-row select{min-width:130px}} </style>
+.filter-heading{width:100%;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}.filter-row{display:flex;flex-wrap:wrap;gap:8px;width:100%}.filter-row select{flex:1;min-width:145px}.filter-actions{justify-content:flex-end}.az-filter{width:100%;padding-top:11px;border-top:1px solid var(--line)}.az-label{display:block;font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px}.az-filter .alpha-nav{padding:0;border:0;background:transparent;display:flex;gap:4px;overflow-x:auto}.az-filter .alpha-nav button{padding:5px 8px;border-radius:7px;font-size:12px}@media(max-width:768px){.filter-row select{min-width:130px}} 
+/* Estados dos botões de download */
+.btn-resolved {
+    background: linear-gradient(135deg, #00c853, #00e676) !important;
+    color: white !important;
+    box-shadow: 0 2px 8px rgba(0, 200, 83, 0.3);
+}
+
+.btn-resolved:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 200, 83, 0.4);
+}
+
+/* Indicadores visuais */
+.download-btn[href*="filecrypt"] {
+    position: relative;
+}
+
+.download-btn[href*="filecrypt"]::after {
+    content: '🔒';
+    margin-left: 5px;
+    font-size: 0.8em;
+}
+</style>
 </head>
 <body><button class="menu-toggle" id="menuToggle" type="button" onclick="toggleSidebar()" aria-label="Menu"><span data-icon="menu"></span></button>
 <div class="side-overlay" id="sideOverlay" onclick="toggleSidebar(false)"></div>
