@@ -74,7 +74,28 @@ function findImage(node) {
 
 const TUMBLER = 'https://store.playstation.com/store/api/chihiro/00_09_000/tumbler/SA/en/999';
 
-// Some older/delisted PS4 titles are not returned by the current Store search index.
+// The catalog already contains verified PS4 Title IDs for the site's games.
+// Use it before the PlayStation Store name search so catalog names do not
+// depend on the Store search index (which misses many older/delisted titles).
+let catalogByName = null;
+function getCatalogByName() {
+  if (catalogByName) return catalogByName;
+  catalogByName = new Map();
+  try {
+    const catalog = require('../catalog.json');
+    for (const game of Array.isArray(catalog?.games) ? catalog.games : []) {
+      const id = normalizeId(game?.title_id);
+      const name = normalizeName(game?.title);
+      if (!id || !name) continue;
+      if (!catalogByName.has(name)) catalogByName.set(name, id);
+    }
+  } catch (error) {
+    console.warn('[PS4META] catalog load failed', error?.message || error);
+  }
+  return catalogByName;
+}
+
+// Some older/delisted PS4 titles are not returned by the current Store search index are not returned by the current Store search index.
 // These are verified Title IDs and are used only as a fallback when name search fails.
 const KNOWN_TITLE_IDS = new Map([
   ['#killallzombies', 'CUSA00856'],
@@ -163,7 +184,14 @@ async function resolveName(name) {
   const clean = String(name || '').trim();
   if (!clean) return null;
 
-  const known = KNOWN_TITLE_IDS.get(normalizeName(clean));
+  const normalized = normalizeName(clean);
+  const catalogId = getCatalogByName().get(normalized);
+  if (catalogId) {
+    console.info('[PS4META] resolveName', JSON.stringify({name: clean, method: 'catalog', found: catalogId}));
+    return {name: clean, title_id: catalogId};
+  }
+
+  const known = KNOWN_TITLE_IDS.get(normalized);
   if (known) {
     console.info('[PS4META] resolveName', JSON.stringify({name: clean, method: 'known', found: known}));
     return {name: clean, title_id: known};
