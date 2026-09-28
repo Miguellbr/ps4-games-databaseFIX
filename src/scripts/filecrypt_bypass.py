@@ -14,7 +14,6 @@ from typing import Optional, Dict, Any, Callable
 from dataclasses import dataclass
 from urllib.parse import urljoin, urlparse
 
-# Configuração de logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
@@ -26,12 +25,12 @@ logger = logging.getLogger(__name__)
 class PoWChallenge:
     """Representa um desafio PoW detectado"""
     pow_id: str
-    algorithm: str  # 'sha256', 'scrypt', etc
-    difficulty: int  # número de zeros necessários no início do hash
+    algorithm: str
+    difficulty: int
     prefix: Optional[str] = None
     suffix: Optional[str] = None
     extra_params: Dict[str, Any] = None
-    
+
     def __post_init__(self):
         if self.extra_params is None:
             self.extra_params = {}
@@ -46,7 +45,7 @@ class BypassResult:
     response_data: Optional[Dict] = None
     cookies: Optional[Dict] = None
     evidence_log: list = None
-    
+
     def __post_init__(self):
         if self.evidence_log is None:
             self.evidence_log = []
@@ -56,7 +55,7 @@ class FileCryptBypass:
     """
     Bypass do FileCrypt via HTTP puro - sem browser, sem JavaScript
     """
-    
+
     def __init__(self, session: Optional[requests.Session] = None):
         self.session = session or requests.Session()
         self.session.headers.update({
@@ -68,7 +67,7 @@ class FileCryptBypass:
             'Connection': 'keep-alive',
         })
         self.evidence_log = []
-        
+
     def _log_evidence(self, stage: str, data: Dict):
         """Registra evidência observável"""
         entry = {
@@ -78,7 +77,7 @@ class FileCryptBypass:
         }
         self.evidence_log.append(entry)
         logger.debug(f"[EVIDENCE] {stage}: {json.dumps(data, indent=2)[:200]}...")
-        
+
     def _extract_pow_params(self, html: str, url: str) -> Optional[PoWChallenge]:
         """Detecta desafios de verificação sem presumir um formato específico."""
         self._log_evidence('html_raw', {'length': len(html), 'url': url})
@@ -91,7 +90,6 @@ class FileCryptBypass:
         ]
         detected = [m for m in markers if m in lower]
 
-        # Mantém compatibilidade com desafios explicitamente expostos no HTML.
         def first(pattern):
             m = re.search(pattern, html, re.IGNORECASE)
             return m.group(1) if m else None
@@ -147,7 +145,7 @@ class FileCryptBypass:
             return None
 
         ray = None
-        match = re.search(r"cRay:\s*['"]([^'"]+)", text, re.IGNORECASE)
+        match = re.search(r"""cRay:\s*['"]([^'"]+)""", text, re.IGNORECASE)
         if match:
             ray = match.group(1)
 
@@ -180,8 +178,8 @@ class FileCryptBypass:
 
         if html:
             patterns = [
-                r'https?://[^"'<>s]+(?:mediafire\.com|1file\.com|1fichier\.com)[^"'<>s]*',
-                r"(?:href|data-url|location|redirect|url)\s*=\s*[\"'](https?://[^\"']+)"
+                r"""https?://[^"'<>s]+(?:mediafire\.com|1file\.com|1fichier\.com)[^"'<>s]*""",
+                r"""(?:href|data-url|location|redirect|url)\s*=\s*["'](https?://[^"']+)"""
             ]
             for pattern in patterns:
                 candidates.extend(re.findall(pattern, html, re.IGNORECASE))
@@ -224,7 +222,6 @@ class FileCryptBypass:
                 evidence_log=self.evidence_log
             )
 
-        # Caso o servidor já tenha redirecionado diretamente.
         direct = self._find_final_url(response) or self._extract_final_link({}, html)
         if direct:
             return BypassResult(
@@ -234,7 +231,6 @@ class FileCryptBypass:
                 evidence_log=self.evidence_log
             )
 
-        # Identifica explicitamente o Cloudflare Challenge observado.
         cloudflare = self._detect_cloudflare_challenge(html)
         if cloudflare:
             self._log_evidence('cloudflare_challenge', cloudflare)
@@ -250,7 +246,6 @@ class FileCryptBypass:
                 evidence_log=self.evidence_log
             )
 
-        # Não inventa endpoints/soluções para mecanismos anti-bot.
         if self._looks_like_verification(html):
             self._log_evidence('verification_required', {
                 'url': response.url,
@@ -294,33 +289,31 @@ class FileCryptBypass:
         )
 
 
-# Exemplo de uso
 if __name__ == "__main__":
     import sys
-    
+
     if len(sys.argv) < 2:
         print("Uso: python filecrypt_bypass.py <url_filecrypt>")
         print("Exemplo: python filecrypt_bypass.py https://filecrypt.co/Container/ABC123.html")
         sys.exit(1)
-        
+
     url = sys.argv[1]
     bypass = FileCryptBypass()
     result = bypass.bypass(url)
-    
+
     print("\n" + "="*60)
     print("RESULTADO DO BYPASS")
     print("="*60)
     print(f"Sucesso: {result.success}")
-    
+
     if result.success:
         print(f"Link Final: {result.final_url}")
         print(f"Cookies: {result.cookies}")
     else:
         print(f"Erro: {result.error_message}")
-        
+
     print(f"\nEvidências registradas: {len(result.evidence_log)} entradas")
-    
-    # Salva evidências em arquivo para análise
+
     with open('bypass_evidence.json', 'w') as f:
         json.dump(result.evidence_log, f, indent=2, default=str)
     print("Evidências salvas em: bypass_evidence.json")
