@@ -13,7 +13,7 @@ class DownloadResolver {
     async loadResolvedLinks() {
         try {
             // Tenta carregar do mesmo diretório do catalog.json
-            const response = await fetch('src/data/resolved_links.json');
+            const response = await fetch('./src/data/resolved_links.json?resolver=1', { cache: 'no-store' });
             if (!response.ok) throw new Error('resolved_links.json not found');
             
             const data = await response.json();
@@ -87,14 +87,15 @@ class DownloadResolver {
         a.target = '_blank';
         a.rel = 'noopener noreferrer';
         
-        // Texto do botão
-        const badge = resolved.badge ? ` [${resolved.badge}]` : '';
+        // Texto do botão: só mostra estado do FileCrypt quando o URL realmente é FileCrypt.
+        // Links MediaFire/1File diretos nunca recebem o cadeado.
+        const badge = resolved.isFilecrypt && resolved.badge ? ` [${resolved.badge}]` : '';
         a.textContent = `${label} ${index + 1}${badge}`;
         
         // Se for FileCrypt não resolvido, adiciona handler de confirmação
         if (resolved.isFilecrypt && !resolved.isResolved) {
             a.onclick = (e) => this.handleFilecryptClick(e, resolved.originalUrl, gameTitle);
-            a.title = 'Via FileCrypt (requires CAPTCHA)';
+            a.title = 'Via FileCrypt (verification may be required)';
         } else if (resolved.isResolved) {
             a.title = 'Direct link (no CAPTCHA)';
         }
@@ -108,7 +109,7 @@ class DownloadResolver {
     handleFilecryptClick(event, originalUrl, gameTitle) {
         const proceed = confirm(
             `⚠️ "${gameTitle}"\n\n` +
-            `This link goes through FileCrypt (CAPTCHA required).\n` +
+            `This link goes through FileCrypt and may require verification.\n` +
             `Would you like to:\n\n` +
             `• OK: Go to FileCrypt\n` +
             `• Cancel: Wait for automatic resolution\n\n` +
