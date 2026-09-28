@@ -7,8 +7,40 @@
     <meta name="keywords" content="PS4 games, PS4 PKG, PS4 download, free PS4 games, jailbroken PS4, Mediafire, 1File">
     <title>PS4 Games Database - 17,065+ Games with Download Links</title>
     <style>
-:root{--bg:#080b12;--panel:#111722;--panel2:#151c29;--panel3:#1a2332;--text:#f4f7fb;--muted:#8f9bad;--line:rgba(255,255,255,.08);--accent:#2d7dff;--accent2:#6ea8ff;--warn:#ffcc66;--shadow:0 24px 70px rgba(0,0,0,.38)}
-*{margin:0;padding:0;box-sizing:border-box}html{background:var(--bg)}body{min-height:100vh;padding:24px;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text);background:radial-gradient(circle at 12% 0%,rgba(45,125,255,.16),transparent 28rem),radial-gradient(circle at 88% 10%,rgba(110,168,255,.08),transparent 24rem),var(--bg)}body:not(.dark){--bg:#eef2f8;--panel:#fff;--panel2:#f7f9fc;--panel3:#edf2f8;--text:#111827;--muted:#64748b;--line:rgba(15,23,42,.09);--shadow:0 24px 60px rgba(15,23,42,.12)}
+:root{--bg:#080b12;--panel:#111722;--panel2:#151c29;--panel3:#1a2332;--text:#f4f7fb;--muted:#8f9bad;--line:rgba(255,255,255,.08);--accent:#2d7dff;--accent2:#6ea8ff;--accent-soft:rgba(45,125,255,.14);--accent-line:rgba(45,125,255,.45);--hero1:#0d1b32;--hero2:#0d1422;--hero3:#101827;--body-glow1:rgba(45,125,255,.16);--body-glow2:rgba(110,168,255,.08);--warn:#ffcc66;--shadow:0 24px 70px rgba(0,0,0,.38)}
+*{margin:0;padding:0;box-sizing:border-box}html{background:var(--bg)}body{min-height:100vh;padding:24px;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text);background:radial-gradient(circle at 12% 0%,var(--body-glow1),transparent 28rem),radial-gradient(circle at 88% 10%,var(--body-glow2),transparent 24rem),var(--bg);transition:background .22s ease,color .22s ease}body:not(.dark){--bg:#eef2f8;--panel:#fff;--panel2:#f7f9fc;--panel3:#edf2f8;--text:#111827;--muted:#64748b;--line:rgba(15,23,42,.09);--shadow:0 24px 60px rgba(15,23,42,.12);--hero1:#f8fbff;--hero2:#edf3fb;--hero3:#e7eef8;--body-glow1:rgba(45,125,255,.10);--body-glow2:rgba(110,168,255,.06)}
+/* Theme variants: the mode (light/dark) controls brightness; the theme controls the color personality. */
+body.dark[data-theme="default"]{}
+body:not(.dark)[data-theme="default"]{}
+body.dark[data-theme="midnight"]{--bg:#080719;--panel:#101024;--panel2:#151633;--panel3:#1c1d43;--accent:#6d5dfc;--accent2:#9b8cff;--accent-soft:rgba(109,93,252,.16);--accent-line:rgba(109,93,252,.46);--hero1:#17133f;--hero2:#0d0b25;--hero3:#141033;--body-glow1:rgba(109,93,252,.20);--body-glow2:rgba(50,112,255,.10)}
+body:not(.dark)[data-theme="midnight"]{--bg:#f0effb;--panel:#fff;--panel2:#f7f6ff;--panel3:#eeecfb;--accent:#5b4ce0;--accent2:#6b5ce8;--accent-soft:rgba(91,76,224,.12);--accent-line:rgba(91,76,224,.34);--hero1:#f5f3ff;--hero2:#ece9fb;--hero3:#e4e1f6;--body-glow1:rgba(109,93,252,.10);--body-glow2:rgba(50,112,255,.06)}
+body.dark[data-theme="crimson"]{--bg:#12080c;--panel:#1b1015;--panel2:#24151b;--panel3:#301a22;--accent:#ef4444;--accent2:#ff7a7a;--accent-soft:rgba(239,68,68,.15);--accent-line:rgba(239,68,68,.42);--hero1:#3a1119;--hero2:#1b0d12;--hero3:#2a1118;--body-glow1:rgba(239,68,68,.18);--body-glow2:rgba(255,92,92,.08)}
+body:not(.dark)[data-theme="crimson"]{--bg:#fff1f2;--panel:#fff;--panel2:#fff7f7;--panel3:#ffecee;--accent:#dc2626;--accent2:#ef4444;--accent-soft:rgba(220,38,38,.10);--accent-line:rgba(220,38,38,.30);--hero1:#fff6f6;--hero2:#ffedef;--hero3:#ffe4e8;--body-glow1:rgba(239,68,68,.09);--body-glow2:rgba(255,140,140,.06)}
+body.dark[data-theme="emerald"]{--bg:#06120e;--panel:#0d1b16;--panel2:#12241d;--panel3:#183026;--accent:#10b981;--accent2:#4ade80;--accent-soft:rgba(16,185,129,.15);--accent-line:rgba(16,185,129,.42);--hero1:#0d3528;--hero2:#0b1d17;--hero3:#103025;--body-glow1:rgba(16,185,129,.16);--body-glow2:rgba(74,222,128,.07)}
+body:not(.dark)[data-theme="emerald"]{--bg:#eefaf5;--panel:#fff;--panel2:#f5fcf9;--panel3:#e9f7f1;--accent:#059669;--accent2:#10b981;--accent-soft:rgba(5,150,105,.10);--accent-line:rgba(5,150,105,.30);--hero1:#f2fcf8;--hero2:#e7f7f0;--hero3:#ddf2e9;--body-glow1:rgba(16,185,129,.08);--body-glow2:rgba(74,222,128,.05)}
+body.dark[data-theme="amber"]{--bg:#130d03;--panel:#1d1609;--panel2:#271d0d;--panel3:#342610;--accent:#f59e0b;--accent2:#fbbf24;--accent-soft:rgba(245,158,11,.15);--accent-line:rgba(245,158,11,.42);--hero1:#3a2608;--hero2:#1d1507;--hero3:#2d2009;--body-glow1:rgba(245,158,11,.16);--body-glow2:rgba(251,191,36,.07)}
+body:not(.dark)[data-theme="amber"]{--bg:#fffaf0;--panel:#fff;--panel2:#fffcf5;--panel3:#fff4d9;--accent:#d97706;--accent2:#f59e0b;--accent-soft:rgba(217,119,6,.10);--accent-line:rgba(217,119,6,.30);--hero1:#fffaf0;--hero2:#fff3d8;--hero3:#ffedc1;--body-glow1:rgba(245,158,11,.08);--body-glow2:rgba(251,191,36,.05)}
+body.dark[data-theme="rose"]{--bg:#14070e;--panel:#1d0e17;--panel2:#26121d;--panel3:#321827;--accent:#ec4899;--accent2:#f472b6;--accent-soft:rgba(236,72,153,.15);--accent-line:rgba(236,72,153,.42);--hero1:#3b1027;--hero2:#1c0b16;--hero3:#2d1020;--body-glow1:rgba(236,72,153,.16);--body-glow2:rgba(244,114,182,.07)}
+body:not(.dark)[data-theme="rose"]{--bg:#fff1f7;--panel:#fff;--panel2:#fff7fb;--panel3:#ffebf4;--accent:#db2777;--accent2:#ec4899;--accent-soft:rgba(219,39,119,.10);--accent-line:rgba(219,39,119,.30);--hero1:#fff7fb;--hero2:#ffedf6;--hero3:#ffe4f0;--body-glow1:rgba(236,72,153,.08);--body-glow2:rgba(244,114,182,.05)}
+header{background:linear-gradient(135deg,var(--hero1),var(--hero2) 55%,var(--hero3));transition:background .22s ease}
+.stat-item{border-color:var(--line);background:color-mix(in srgb,var(--panel) 18%,transparent)}
+body:not(.dark) .stat-item{background:rgba(255,255,255,.58)}
+.library-chip.active{background:var(--accent-soft);color:var(--accent2);border-color:var(--accent-line)}
+.tool-btn:hover,.filter-select:hover,.filter-toggle button:hover{border-color:var(--accent-line)}
+.tool-btn.active{background:var(--accent);border-color:var(--accent)}
+.side-btn:hover{border-color:var(--accent-line)}
+.menu-toggle{background:color-mix(in srgb,var(--hero2) 88%,transparent)}
+body:not(.dark) .menu-toggle{background:rgba(255,255,255,.78);color:var(--text);border-color:var(--line)}
+.theme-panel{display:none;margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:14px;background:var(--panel2)}
+.theme-panel.show{display:block}
+.theme-heading{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:2px 0 7px}
+.theme-mode{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.theme-mode button,.theme-option{border:1px solid var(--line);background:var(--panel);color:var(--text);padding:9px 10px;border-radius:9px;cursor:pointer;font-weight:700;text-align:left}
+.theme-mode button.active,.theme-option.active{border-color:var(--accent-line);background:var(--accent-soft);color:var(--accent2)}
+.theme-option{width:100%;margin:5px 0}
+.theme-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:0}
+.theme-dot.blue{background:#2d7dff}.theme-dot.purple{background:#6d5dfc}.theme-dot.red{background:#ef4444}.theme-dot.green{background:#10b981}.theme-dot.amber{background:#f59e0b}.theme-dot.pink{background:#ec4899}
+
 .container{max-width:1480px;margin:0 auto;background:var(--panel);border:1px solid var(--line);border-radius:26px;box-shadow:var(--shadow);overflow:hidden}header{position:relative;padding:54px clamp(22px,5vw,72px) 42px;overflow:hidden;background:linear-gradient(135deg,#0d1b32,#0d1422 55%,#101827);border-bottom:1px solid var(--line)}header:after{content:"";position:absolute;width:380px;height:380px;border-radius:50%;right:-130px;top:-190px;background:radial-gradient(circle,rgba(45,125,255,.28),transparent 68%)}header h1{position:relative;z-index:1;font-size:clamp(2rem,4vw,3.65rem);line-height:1.05;letter-spacing:-.045em;margin-bottom:12px}header h1:after{content:"";display:inline-block;width:9px;height:9px;margin:0 0 8px 8px;border-radius:50%;background:var(--accent);box-shadow:0 0 18px rgba(45,125,255,.9)}.hero-subtitle{position:relative;z-index:1;color:#aebbd0;font-size:1rem;max-width:700px}
 .stats{position:relative;z-index:1;display:flex;flex-wrap:wrap;gap:10px;margin-top:28px}.stat-item{min-width:150px;padding:14px 16px;border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.045);border-radius:14px}.stat-number{display:block;font-size:1.35rem;font-weight:800}.stat-label{display:block;color:#8e9db4;font-size:.76rem;margin-top:3px;text-transform:uppercase;letter-spacing:.08em}
 .search-container{padding:22px clamp(16px,4vw,48px);background:var(--panel);border-bottom:1px solid var(--line)}.search-wrap{position:relative;max-width:980px;margin:0 auto}#searchInput{width:100%;height:58px;padding:0 54px 0 20px;border:1px solid var(--line);border-radius:16px;outline:0;background:var(--panel2);color:var(--text);font-size:16px;transition:.2s}#searchInput:focus{border-color:rgba(45,125,255,.75);box-shadow:0 0 0 4px rgba(45,125,255,.11)}#clearSearch{position:absolute;right:10px;top:9px;width:40px;height:40px;border:0;border-radius:11px;background:transparent;color:var(--muted);cursor:pointer;font-size:20px}#clearSearch:hover{background:var(--panel3);color:var(--text)}.search-info{margin:11px auto 0;max-width:980px;color:var(--muted);font-size:13px}
@@ -30,7 +62,21 @@ footer{padding:25px clamp(18px,4vw,48px);text-align:center;color:var(--muted);bo
   <button class="side-btn" onclick="toggleFilters();toggleSidebar(false)">⚙️ <span data-i18n="filters">Filtros</span></button>
   <button class="side-btn" onclick="showFavorites();toggleSidebar(false)">⭐ <span data-i18n="favorites">Favoritos</span></button>
   <button class="side-btn" onclick="showHistory();toggleSidebar(false)">🕘 <span data-i18n="history">Histórico</span></button>
-  <button class="side-btn" onclick="toggleTheme();toggleSidebar(false)">🌙 <span data-i18n="theme">Tema</span></button>
+  <button class="side-btn" onclick="toggleThemePanel()">🎨 <span data-i18n="theme">Tema</span></button>
+  <div class="theme-panel" id="themePanel">
+    <div class="theme-heading">Modo</div>
+    <div class="theme-mode">
+      <button type="button" data-mode="light" onclick="setThemeMode('light')">☀️ Claro</button>
+      <button type="button" data-mode="dark" onclick="setThemeMode('dark')">🌙 Escuro</button>
+    </div>
+    <div class="theme-heading">Variação</div>
+    <button type="button" class="theme-option" data-theme-option="default" onclick="setThemeVariant('default')"><span class="theme-dot blue"></span>Default</button>
+    <button type="button" class="theme-option" data-theme-option="midnight" onclick="setThemeVariant('midnight')"><span class="theme-dot purple"></span>Midnight</button>
+    <button type="button" class="theme-option" data-theme-option="crimson" onclick="setThemeVariant('crimson')"><span class="theme-dot red"></span>Crimson</button>
+    <button type="button" class="theme-option" data-theme-option="emerald" onclick="setThemeVariant('emerald')"><span class="theme-dot green"></span>Emerald</button>
+    <button type="button" class="theme-option" data-theme-option="amber" onclick="setThemeVariant('amber')"><span class="theme-dot amber"></span>Amber</button>
+    <button type="button" class="theme-option" data-theme-option="rose" onclick="setThemeVariant('rose')"><span class="theme-dot pink"></span>Rose</button>
+  </div>
   <button class="side-btn" onclick="document.getElementById('jsonImport').click();toggleSidebar(false)">📥 <span data-i18n="import">Importar JSON</span></button>
   <button class="side-btn" onclick="exportLibraries();toggleSidebar(false)">📤 <span data-i18n="export">Exportar minhas bibliotecas</span></button>
   <button class="side-btn" onclick="showGuide();toggleSidebar(false)">📖 <span data-i18n="guide">Guia do site</span></button>
@@ -564,11 +610,35 @@ async function showDetails(game){
   });
 }
 function closeDetails(e){ if(!e||e.target===document.getElementById('detailModal')) document.getElementById('detailModal').classList.remove('show'); }
-function toggleTheme(){
-  document.body.classList.toggle('dark');
-  localStorage.setItem('ps4db_dark',document.body.classList.contains('dark')?'1':'0');
+function applyTheme(){
+  const body=document.body;
+  const mode=localStorage.getItem('ps4db_mode') || (localStorage.getItem('ps4db_dark')==='1'?'dark':'light');
+  const variant=localStorage.getItem('ps4db_theme') || 'default';
+  body.classList.toggle('dark',mode==='dark');
+  body.dataset.theme=variant;
+  localStorage.setItem('ps4db_mode',mode);
+  localStorage.setItem('ps4db_theme',variant);
+  document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));
+  document.querySelectorAll('[data-theme-option]').forEach(b=>b.classList.toggle('active',b.dataset.themeOption===variant));
 }
-if(localStorage.getItem('ps4db_dark')==='1') document.body.classList.add('dark');
+function setThemeMode(mode){
+  localStorage.setItem('ps4db_mode',mode==='dark'?'dark':'light');
+  localStorage.setItem('ps4db_dark',mode==='dark'?'1':'0');
+  applyTheme();
+}
+function setThemeVariant(variant){
+  localStorage.setItem('ps4db_theme',variant);
+  applyTheme();
+}
+function toggleThemePanel(){
+  const panel=document.getElementById('themePanel');
+  if(panel)panel.classList.toggle('show');
+  applyTheme();
+}
+function toggleTheme(){
+  setThemeMode(document.body.classList.contains('dark')?'light':'dark');
+}
+applyTheme();
 
 
 const gamesContainer=document.getElementById('gamesContainer'), scrollBtn=document.getElementById('scrollTop');
