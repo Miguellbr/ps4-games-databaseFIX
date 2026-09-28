@@ -54,7 +54,7 @@ footer{padding:25px clamp(18px,4vw,48px);text-align:center;color:var(--muted);bo
 @media(max-width:768px){body{padding:8px}.container{border-radius:18px}header{padding:48px 18px 28px}header h1{font-size:2rem}.hero-subtitle{font-size:.9rem}.stats{display:grid;grid-template-columns:repeat(2,1fr)}.stat-item{min-width:0}.games-container{height:72vh;padding:14px 10px}.game-item{padding:15px}.game-title{font-size:16px}.game-cover{width:56px;height:76px}.download-btn{padding:7px 9px}.sidebar{width:min(310px,88vw)}.menu-toggle{top:10px;left:10px}.filter-select,.tool-btn{flex:1;min-width:120px}}
 .filter-heading{width:100%;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}.filter-row{display:flex;flex-wrap:wrap;gap:8px;width:100%}.filter-row select{flex:1;min-width:145px}.filter-actions{justify-content:flex-end}.az-filter{width:100%;padding-top:11px;border-top:1px solid var(--line)}.az-label{display:block;font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px}.az-filter .alpha-nav{padding:0;border:0;background:transparent;display:flex;gap:4px;overflow-x:auto}.az-filter .alpha-nav button{padding:5px 8px;border-radius:7px;font-size:12px}@media(max-width:768px){.filter-row select{min-width:130px}} </style>
 </head>
-<body><button class="menu-toggle" id="menuToggle" type="button" onclick="toggleSidebar()" aria-label="Menu">☰</button>
+<body><button class="menu-toggle" id="menuToggle" type="button" onclick="toggleSidebar()" aria-label="Menu"><span data-icon="menu"></span></button>
 <div class="side-overlay" id="sideOverlay" onclick="toggleSidebar(false)"></div>
 <input type="file" id="jsonImport" accept=".json,application/json" multiple hidden onchange="importJSONFiles(event)">
 <aside class="sidebar" id="sidebar">
@@ -66,8 +66,8 @@ footer{padding:25px clamp(18px,4vw,48px);text-align:center;color:var(--muted);bo
   <div class="theme-panel" id="themePanel">
     <div class="theme-heading">Modo</div>
     <div class="theme-mode">
-      <button type="button" data-mode="light" onclick="setThemeMode('light')">☀️ Claro</button>
-      <button type="button" data-mode="dark" onclick="setThemeMode('dark')">🌙 Escuro</button>
+      <button type="button" data-mode="light" onclick="setThemeMode('light')"><span data-icon="sun"></span> Claro</button>
+      <button type="button" data-mode="dark" onclick="setThemeMode('dark')"><span data-icon="moon"></span> Escuro</button>
     </div>
     <div class="theme-heading">Variação</div>
     <button type="button" class="theme-option" data-theme-option="default" onclick="setThemeVariant('default')"><span class="theme-dot blue"></span>Default</button>
@@ -90,7 +90,7 @@ footer{padding:25px clamp(18px,4vw,48px);text-align:center;color:var(--muted);bo
     <div class="container">
         <header><h1><span data-icon="app" class="hero-icon"></span>PS4 Games Database</h1><p class="hero-subtitle">Uma biblioteca organizada para encontrar jogos, versões, regiões e suas informações rapidamente.</p><div class="stats"><div class="stat-item"><span class="stat-number" id="totalGames">17,065</span><span class="stat-label">Jogos indexados</span></div><div class="stat-item"><span class="stat-number" id="totalLinks">45,910</span><span class="stat-label">Links catalogados</span></div><div class="stat-item"><span class="stat-number">3</span><span class="stat-label">Fontes</span></div></div></header>
                 <div class="search-container">
-            <div class="search-wrap"><input type="text" id="searchInput" autocomplete="off" placeholder="🔍 Pesquisar por nome, Title ID, região ou versão..." oninput="searchGames()"><button id="clearSearch" type="button" onclick="clearSearch()" aria-label="Limpar busca">×</button></div>
+            <div class="search-wrap"><input type="text" id="searchInput" autocomplete="off" placeholder="Pesquisar por nome, Title ID, região ou versão..." oninput="searchGames()"><button id="clearSearch" type="button" onclick="clearSearch()" aria-label="Limpar busca">×</button></div>
             <div class="search-info" id="searchInfo">Carregando biblioteca...</div>
             <div class="filter-toggle"><button type="button" id="filterToggleBtn" onclick="toggleFilters()"><span data-icon="controls"></span> Filtros</button></div>
             <div class="filter-panel" id="filterPanel"><div class="filter-heading"><span data-icon="controls"></span> Filtros</div><div class="filter-row">
@@ -105,7 +105,7 @@ footer{padding:25px clamp(18px,4vw,48px);text-align:center;color:var(--muted);bo
                     <option value="0">Sem links</option>
                     <option value="1">1+ links</option>
                     <option value="3">3+ links</option>
-                </select><select id="regionFilter" onchange="applyFilters()"><option value="all">Todas as regiões</option></select><select id="sourceFilter" onchange="applyFilters()"><option value="all">Todas as fontes</option><option value="main">Biblioteca principal</option></select><select id="firmwareFilter" onchange="applyFilters()"><option value="all">Qualquer firmware</option><option value="9">Até FW 9.00</option><option value="11">Até FW 11.00</option><option value="12">Até FW 12.00</option><option value="higher">Acima de FW 12.00</option></select><select id="versionFilter" onchange="applyFilters()"><option value="all">Qualquer versão</option><option value="with">Com versão</option></select></div><div class="filter-row filter-actions"><button type="button" class="tool-btn" onclick="clearAllFilters()">↺ Limpar filtros</button></div><div class="az-filter"><span class="az-label">A–Z</span><div id="alphaNav" class="alpha-nav"></div></div></div><div id="libraryBar" class="library-bar"></div>
+                </select><select id="regionFilter" onchange="applyFilters()"><option value="all">Todas as regiões</option></select><select id="sourceFilter" onchange="applyFilters()"><option value="all">Todas as fontes</option><option value="main">Biblioteca principal</option></select><select id="firmwareFilter" onchange="applyFilters()"><option value="all">Qualquer firmware</option><option value="9">Até FW 9.00</option><option value="11">Até FW 11.00</option><option value="12">Até FW 12.00</option><option value="higher">Acima de FW 12.00</option></select><select id="versionFilter" onchange="applyFilters()"><option value="all">Qualquer versão</option><option value="with">Com versão</option></select></div><div class="filter-row filter-actions"><button type="button" class="tool-btn" onclick="clearAllFilters()">Limpar filtros</button></div><div class="az-filter"><span class="az-label">A–Z</span><div id="alphaNav" class="alpha-nav"></div></div></div><div id="libraryBar" class="library-bar"></div>
         <div class="games-container" id="gamesContainer">
             <div class="loading">Loading 17,065 games with download links...</div>
         </div>
