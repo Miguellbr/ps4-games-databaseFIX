@@ -184,7 +184,7 @@ class FileCryptBypass:
             return None
 
         ray = None
-        match = re.search(r"""cRay:s*['"]([^'"]+)""", text, re.IGNORECASE)
+        match = re.search(r"""cRay:\s*['"]([^'"]+)""", text, re.IGNORECASE)
         if match:
             ray = match.group(1)
 
@@ -359,8 +359,7 @@ if __name__ == "__main__":
     bypass = FileCryptBypass()
     result = bypass.bypass(url)
 
-    print("
-" + "="*60)
+    print("\n" + "="*60)
     print("RESULTADO DO BYPASS")
     print("="*60)
     print(f"Sucesso: {result.success}")
@@ -371,8 +370,7 @@ if __name__ == "__main__":
     else:
         print(f"Erro: {result.error_message}")
 
-    print(f"
-Evidências registradas: {len(result.evidence_log)} entradas")
+    print(f"\nEvidências registradas: {len(result.evidence_log)} entradas")
 
     with open('bypass_evidence.json', 'w') as f:
         json.dump(result.evidence_log, f, indent=2, default=str)
