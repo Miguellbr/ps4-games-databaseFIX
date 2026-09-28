@@ -332,7 +332,7 @@ async function loadOneGameMetadata(game,card){
   const params=new URLSearchParams();
   if(id)params.set('ids',id);
   if(name)params.set('names',JSON.stringify([name]));
-  const metadataApiBase=(window.location.protocol==='file:'||window.location.protocol==='capacitor:')?'https://ps4-games-database-fix.vercel.app':'';
+  const metadataApiBase=(window.location.protocol==='file:'||window.location.protocol==='capacitor:'||window.location.hostname==='localhost')?'https://ps4-games-database-fix.vercel.app':'';
   const r=await fetch(metadataApiBase+'/api/ps4-metadata?'+params.toString(),{cache:'no-store'});
   if(!r.ok)throw new Error('metadata HTTP '+r.status);
   const data=await r.json();
