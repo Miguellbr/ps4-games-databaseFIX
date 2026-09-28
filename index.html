@@ -304,7 +304,7 @@ function setDescriptionContent(box,en,pt){
 function renderMetadata(game,meta,card=metadataCards.get(game)){
   if(!meta)return;
   Object.assign(game,meta,{title_id:meta.title_id||getCusaId(game)||'',description:game.description||meta.description_en||''});
-  if(!card?.isConnected)return;
+  if(!card)return;
   const box=card.querySelector('[data-description-box]');
   if(box)setDescriptionContent(box,cleanStoreDescription(game.description_en||game.description||''),cleanStoreDescription(game.description_pt||''));
   const titleIdBox=card.querySelector('[data-title-id-box]');
@@ -357,7 +357,7 @@ async function runMetadataWorker(){
       batch.forEach(game=>{
         const box=metadataCards.get(game)?.querySelector('[data-description-box]');
         if(box)setDescriptionContent(box,'Erro ao carregar','Erro ao carregar');
-        metadataQueued.delete(metadataKey(game));
+        metadataQueued.delete(game);
       });
     }
     await new Promise(r=>setTimeout(r,60));
