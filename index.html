@@ -326,13 +326,32 @@ function queueMetadataGames(games){
   }
   runMetadataWorker();
 }
+let localMetadataPromise=null;
+async function loadLocalMetadata(){
+  if(!localMetadataPromise){
+    localMetadataPromise=fetch('./metadata.json',{cache:'no-store'}).then(r=>r.ok?r.json():{}).catch(()=>({}));
+  }
+  return localMetadataPromise;
+}
 async function loadOneGameMetadata(game,card){
   const id=getCusaId(game);
   const name=game?.name||'';
+  const local=await loadLocalMetadata();
+  const localMeta=(id&&local.by_id&&local.by_id[id])||((local.by_name||{})[normalizeMetadataName(name)]);
+  if(localMeta){
+    metadataCache.set(metadataKey(game),localMeta);
+    renderMetadata(game,localMeta,card);
+    return;
+  }
+  const metadataApiBase=(window.location.protocol==='file:'||window.location.protocol==='capacitor:'||window.location.hostname==='localhost')?'https://ps4-games-database-fix.vercel.app':'';
+  if(!metadataApiBase){
+    const box=card.querySelector('[data-description-box]');
+    if(box)setDescriptionContent(box,'Não disponível','Não disponível');
+    return;
+  }
   const params=new URLSearchParams();
   if(id)params.set('ids',id);
   if(name)params.set('names',JSON.stringify([name]));
-  const metadataApiBase=(window.location.protocol==='file:'||window.location.protocol==='capacitor:'||window.location.hostname==='localhost')?'https://ps4-games-database-fix.vercel.app':'';
   const r=await fetch(metadataApiBase+'/api/ps4-metadata?'+params.toString(),{cache:'no-store'});
   if(!r.ok)throw new Error('metadata HTTP '+r.status);
   const data=await r.json();
