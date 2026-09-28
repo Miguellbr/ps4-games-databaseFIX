@@ -292,8 +292,9 @@ function updateStats() {
 
 let activeLetter='';
 function normalizeLetter(value){
-  const first=String(value||'').trim().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toUpperCase().charAt(0);
-  return /^[A-Z]$/.test(first) ? first : (first>='0'&&first<='9' ? first : '');
+  const text=String(value||'').trim().normalize('NFD');
+  const first=text.replace(/[\u0300-\u036f]/g,'').toUpperCase().charAt(0);
+  return first && ((first>='A'&&first<='Z')||(first>='0'&&first<='9')) ? first : '';
 }
 function setActiveLetter(letter){
   activeLetter=String(letter||'').toUpperCase();
@@ -411,7 +412,7 @@ if(tokens.length===1&&q.length>=2&&nt.some(n=>n.startsWith(q)))score+=700;
 if(score>0)return score;
 if(tokens.length===1&&q.length>=4){const t=tokens[0];if(nt.some(n=>levenshtein(t,n)<=Math.max(1,Math.floor(t.length/5))))return 250;}
 return 0;}
-function applyFilters(){const rawQ=(document.getElementById('searchInput').value||'').trim(),type=document.getElementById('typeFilter').value,min=document.getElementById('linksFilter').value,region=document.getElementById('regionFilter').value,firmware=document.getElementById('firmwareFilter')?.value||'all',version=document.getElementById('versionFilter')?.value||'all',idx=activeSource.startsWith('lib:')?Number(activeSource.slice(4)):-1;filteredGames=allGames.filter(g=>{const mq=!rawQ||searchScore(g,rawQ)>0,mt=type==='all'||gameType(g)===type,links=Number(g.total_links||0),ml=min==='all'||(min==='0'?links===0:links>=Number(min)),mr=region==='all'||g.region===region,ms=activeSource==='all'||g._source===activeSource||(idx>=0&&g._source===importedLibraries[idx]?.name),fw=parseFloat(String(g.min_fw||'').replace(/[^0-9.]/g,'')),mf=firmware==='all'||(firmware==='9'&&fw>0&&fw<=9)||(firmware==='11'&&fw>9&&fw<=11)||(firmware==='12'&&fw>11&&fw<=12)||(firmware==='higher'&&fw>12),mv=version==='all'||!!String(g.version||'').trim(),ma=!activeLetter||String(g.name||'').trim().toUpperCase().startsWith(activeLetter);return mq&&mt&&ml&&mr&&ms&&mf&&mv&&ma;});if(rawQ){filteredGames.sort((a,b)=>searchScore(b,rawQ)-searchScore(a,rawQ));saveSearch(rawQ);}renderedCount=0;renderBatch(0);}
+function applyFilters(){const rawQ=(document.getElementById('searchInput').value||'').trim(),type=document.getElementById('typeFilter').value,min=document.getElementById('linksFilter').value,region=document.getElementById('regionFilter').value,firmware=document.getElementById('firmwareFilter')?.value||'all',version=document.getElementById('versionFilter')?.value||'all',idx=activeSource.startsWith('lib:')?Number(activeSource.slice(4)):-1;filteredGames=allGames.filter(g=>{const mq=!rawQ||searchScore(g,rawQ)>0,mt=type==='all'||gameType(g)===type,links=Number(g.total_links||0),ml=min==='all'||(min==='0'?links===0:links>=Number(min)),mr=region==='all'||g.region===region,ms=activeSource==='all'||g._source===activeSource||(idx>=0&&g._source===importedLibraries[idx]?.name),fw=parseFloat(String(g.min_fw||'').replace(/[^0-9.]/g,'')),mf=firmware==='all'||(firmware==='9'&&fw>0&&fw<=9)||(firmware==='11'&&fw>9&&fw<=11)||(firmware==='12'&&fw>11&&fw<=12)||(firmware==='higher'&&fw>12),mv=version==='all'||!!String(g.version||'').trim(),ma=!activeLetter||normalizeLetter(g.name)===activeLetter;return mq&&mt&&ml&&mr&&ms&&mf&&mv&&ma;});if(rawQ){filteredGames.sort((a,b)=>searchScore(b,rawQ)-searchScore(a,rawQ));saveSearch(rawQ);}renderedCount=0;renderBatch(0);}
 function searchGames(){applyFilters();}
 function clearSearch(){const i=document.getElementById('searchInput');i.value='';applyFilters();i.focus();}
 function clearAllFilters(){['typeFilter','linksFilter','regionFilter','sourceFilter','firmwareFilter','versionFilter'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='all';});activeLetter='';buildAlphaNav();applyFilters();}
