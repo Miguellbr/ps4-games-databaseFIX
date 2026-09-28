@@ -79,7 +79,7 @@ class FileCryptBypass:
         logger.debug(f"[EVIDENCE] {stage}: {json.dumps(data, indent=2)[:200]}...")
 
     def _extract_pow_params(self, html: str, url: str) -> Optional[PoWChallenge]:
-        """Detecta desafios de verificação sem presumir um formato específico."""
+        """Detecta desafios PoW de formato genérico, sem presumir o mecanismo específico."""
         self._log_evidence('html_raw', {'length': len(html), 'url': url})
 
         lower = html.lower()
@@ -116,6 +116,45 @@ class FileCryptBypass:
         )
 
     @staticmethod
+    def _detect_filecrypt_pow(html: str) -> Optional[Dict[str, Any]]:
+        """Detecta especificamente o widget PoW/CAPTCHA exibido pelo FileCrypt."""
+        text = html or ''
+        lower = text.lower()
+
+        signals = []
+        if 'id="pow-captcha"' in lower or "id='pow-captcha'" in lower:
+            signals.append('pow_captcha')
+        if 'data-session="/captchasession/' in lower or "data-session='/captchasession/" in lower:
+            signals.append('captcha_session')
+        if '/js/pow_captcha.js' in lower:
+            signals.append('pow_captcha_js')
+        if 'data-worker="/js/pow_captcha_worker.js' in lower or "data-worker='/js/pow_captcha_worker.js" in lower:
+            signals.append('pow_captcha_worker')
+
+        if len(signals) < 2:
+            return None
+
+        def attr(name: str) -> Optional[str]:
+            match = re.search(
+                rf'data-{re.escape(name)}\s*=\s*["\']([^"\']+)',
+                text,
+                re.IGNORECASE
+            )
+            return match.group(1) if match else None
+
+        result = {
+            'provider': 'filecrypt',
+            'type': 'pow_captcha',
+            'signals': signals,
+            'session': attr('session'),
+            'worker': attr('worker'),
+            'text': attr('text-working'),
+            'state': attr('state'),
+        }
+
+        return result
+
+    @staticmethod
     def _looks_like_verification(html: str) -> bool:
         text = (html or '').lower()
         return any(marker in text for marker in (
@@ -145,7 +184,7 @@ class FileCryptBypass:
             return None
 
         ray = None
-        match = re.search(r"""cRay:\s*['"]([^'"]+)""", text, re.IGNORECASE)
+        match = re.search(r"""cRay:s*['"]([^'"]+)""", text, re.IGNORECASE)
         if match:
             ray = match.group(1)
 
@@ -178,8 +217,8 @@ class FileCryptBypass:
 
         if html:
             patterns = [
-                r"""https?://[^"'<>s]+(?:mediafire\.com|1file\.com|1fichier\.com)[^"'<>s]*""",
-                r"""(?:href|data-url|location|redirect|url)\s*=\s*["'](https?://[^"']+)"""
+                r"""https?://[^"'<>s]+(?:mediafire.com|1file.com|1fichier.com)[^"'<>s]*""",
+                r"""(?:href|data-url|location|redirect|url)s*=s*["'](https?://[^"']+)"""
             ]
             for pattern in patterns:
                 candidates.extend(re.findall(pattern, html, re.IGNORECASE))
@@ -213,7 +252,11 @@ class FileCryptBypass:
                 'history': [
                     {'status': r.status_code, 'url': r.url, 'location': r.headers.get('Location')}
                     for r in response.history
-                ]
+                ],
+                'content_type': response.headers.get('Content-Type', ''),
+                'content_encoding': response.headers.get('Content-Encoding', ''),
+                'server': response.headers.get('Server', ''),
+                'cf_ray': response.headers.get('CF-Ray', '')
             })
         except requests.RequestException as e:
             return BypassResult(
@@ -241,6 +284,21 @@ class FileCryptBypass:
                     'status_code': response.status_code,
                     'url': response.url,
                     'challenge': cloudflare
+                },
+                cookies=dict(self.session.cookies),
+                evidence_log=self.evidence_log
+            )
+
+        filecrypt_pow = self._detect_filecrypt_pow(html)
+        if filecrypt_pow:
+            self._log_evidence('filecrypt_pow_challenge', filecrypt_pow)
+            return BypassResult(
+                success=False,
+                error_message='needs_verification: FileCrypt PoW/CAPTCHA detectado',
+                response_data={
+                    'status_code': response.status_code,
+                    'url': response.url,
+                    'challenge': filecrypt_pow
                 },
                 cookies=dict(self.session.cookies),
                 evidence_log=self.evidence_log
@@ -301,7 +359,8 @@ if __name__ == "__main__":
     bypass = FileCryptBypass()
     result = bypass.bypass(url)
 
-    print("\n" + "="*60)
+    print("
+" + "="*60)
     print("RESULTADO DO BYPASS")
     print("="*60)
     print(f"Sucesso: {result.success}")
@@ -312,7 +371,8 @@ if __name__ == "__main__":
     else:
         print(f"Erro: {result.error_message}")
 
-    print(f"\nEvidências registradas: {len(result.evidence_log)} entradas")
+    print(f"
+Evidências registradas: {len(result.evidence_log)} entradas")
 
     with open('bypass_evidence.json', 'w') as f:
         json.dump(result.evidence_log, f, indent=2, default=str)
