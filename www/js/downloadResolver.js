@@ -1,4 +1,4 @@
-/**
+/** 
  * DownloadResolver - Integração FileCrypt Bypass
  * Resolve links FileCrypt usando resolved_links.json
  */
@@ -12,7 +12,6 @@ class DownloadResolver {
     
     async loadResolvedLinks() {
         try {
-            // Tenta carregar do mesmo diretório do catalog.json
             const response = await fetch('./src/data/resolved_links.json?resolver=1', { cache: 'no-store' });
             if (!response.ok) throw new Error('resolved_links.json not found');
             
@@ -21,36 +20,31 @@ class DownloadResolver {
             this.metadata = data.metadata || {};
             this.loaded = true;
             
-            console.log(`[DownloadResolver] Loaded ${Object.keys(this.resolvedLinks).length} resolved links`);
+            console.log(`[DownloadResolver] Loaded ${Object.keys(this.resolvedLinks).length} link states`);
             return true;
-            
         } catch (error) {
             console.warn('[DownloadResolver] Could not load resolved links:', error);
             this.resolvedLinks = {};
+            this.loaded = false;
             return false;
         }
     }
+
+    async waitUntilLoaded() {
+        return this.loadPromise;
+    }
     
-    /**
-     * Resolve um link FileCrypt para direto
-     * @param {string} url - URL original
-     * @param {string} gameTitle - Título do jogo
-     * @param {string} host - Tipo de host (mediafire, 1file, etc)
-     * @param {number} index - Índice do link
-     * @returns {Object} {url, isResolved, isFilecrypt, badge}
-     */
     resolveLink(url, gameTitle, host, index = 0) {
-        // Se não for FileCrypt, retorna como está
         if (!url || !url.toLowerCase().includes('filecrypt')) {
             return {
-                url: url,
+                url,
                 isResolved: false,
                 isFilecrypt: false,
+                needsVerification: false,
                 badge: null
             };
         }
         
-        // Tenta encontrar no mapa de resolvidos
         const linkId = `${gameTitle}__${host}__${index}`;
         const resolution = this.resolvedLinks?.[linkId];
         
@@ -59,43 +53,47 @@ class DownloadResolver {
                 url: resolution.direct_url,
                 isResolved: true,
                 isFilecrypt: true,
+                needsVerification: false,
                 badge: '⚡ DIRECT',
-                originalUrl: url
+                originalUrl: url,
+                status: 'resolved'
             };
         }
-        
-        // FileCrypt não resolvido
+
+        const needsVerification =
+            resolution?.status === 'needs_verification' ||
+            typeof resolution?.error === 'string' &&
+            resolution.error.startsWith('needs_verification:');
+
         return {
-            url: url,
+            url,
             isResolved: false,
             isFilecrypt: true,
-            badge: '🔒 FILECRYPT',
-            originalUrl: url
+            needsVerification,
+            badge: needsVerification ? '🔐 VERIFICAÇÃO' : '🔒 FILECRYPT',
+            originalUrl: url,
+            status: needsVerification ? 'needs_verification' : (resolution?.status || 'unknown'),
+            error: resolution?.error || null
         };
     }
     
-    /**
-     * Cria elemento de link de download (substitui a função add() original)
-     * Use esta função no lugar de criar <a> diretamente
-     */
     createDownloadLink(url, gameTitle, host, index, label) {
         const resolved = this.resolveLink(url, gameTitle, host, index);
         
         const a = document.createElement('a');
         a.href = resolved.url;
-        a.className = `download-btn btn-${host} ${resolved.isResolved ? 'btn-resolved' : ''}`;
+        a.className = `download-btn btn-${host} ${resolved.isResolved ? 'btn-resolved' : ''} ${resolved.needsVerification ? 'btn-verification' : ''}`;
         a.target = '_blank';
         a.rel = 'noopener noreferrer';
         
-        // Texto do botão: só mostra estado do FileCrypt quando o URL realmente é FileCrypt.
-        // Links MediaFire/1File diretos nunca recebem o cadeado.
         const badge = resolved.isFilecrypt && resolved.badge ? ` [${resolved.badge}]` : '';
         a.textContent = `${label} ${index + 1}${badge}`;
         
-        // Se for FileCrypt não resolvido, adiciona handler de confirmação
         if (resolved.isFilecrypt && !resolved.isResolved) {
-            a.onclick = (e) => this.handleFilecryptClick(e, resolved.originalUrl, gameTitle);
-            a.title = 'Via FileCrypt (verification may be required)';
+            a.onclick = (e) => this.handleFilecryptClick(e, resolved.originalUrl, gameTitle, resolved.needsVerification);
+            a.title = resolved.needsVerification
+                ? 'FileCrypt requer verificação'
+                : 'Via FileCrypt (verification may be required)';
         } else if (resolved.isResolved) {
             a.title = 'Direct link (no CAPTCHA)';
         }
@@ -103,31 +101,26 @@ class DownloadResolver {
         return a;
     }
     
-    /**
-     * Handler para clique em FileCrypt não resolvido
-     */
-    handleFilecryptClick(event, originalUrl, gameTitle) {
+    handleFilecryptClick(event, originalUrl, gameTitle, needsVerification = false) {
+        if (!needsVerification) {
+            return true;
+        }
+
         const proceed = confirm(
             `⚠️ "${gameTitle}"\n\n` +
-            `This link goes through FileCrypt and may require verification.\n` +
-            `Would you like to:\n\n` +
-            `• OK: Go to FileCrypt\n` +
-            `• Cancel: Wait for automatic resolution\n\n` +
-            `Note: Run "python src/scripts/resolve_catalog.py" to resolve all links.`
+            `O resolver identificou que este link do FileCrypt requer verificação.\n\n` +
+            `OK: abrir o FileCrypt para realizar a verificação\n` +
+            `Cancelar: permanecer nesta página`
         );
-        
+
         if (!proceed) {
             event.preventDefault();
             return false;
         }
-        
+
         return true;
     }
     
-    /**
-     * Gera todos os botões de download para um jogo
-     * Substitui o bloco add() no seu código
-     */
     renderDownloadLinks(game) {
         const container = document.createElement('div');
         container.className = 'download-links';
@@ -155,9 +148,6 @@ class DownloadResolver {
     }
 }
 
-// Instância global
 const downloadResolver = new DownloadResolver();
-
-// Exporta para uso
 window.DownloadResolver = DownloadResolver;
 window.downloadResolver = downloadResolver;
