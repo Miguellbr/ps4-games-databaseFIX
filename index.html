@@ -337,6 +337,7 @@ function renderVirtualWindow(startIndex=0){
 
   container.innerHTML='';
   container.appendChild(fragment);
+  queueMetadataGames(filteredGames.slice(virtualStart, virtualEnd));
 
   renderedCount=virtualEnd;
   const q=(document.getElementById('searchInput').value||'').trim();
@@ -414,7 +415,21 @@ function renderMetadata(game,meta,card=metadataCards.get(game)){
     img.onerror=()=>{img.remove();};img.src=meta.cover_url;
   }
 }
-function queueMetadataGames(){ /* Metadata is loaded on demand from the Details view. */ }
+function queueMetadataGames(games){
+  for(const game of games||[]){
+    const card=metadataCards.get(game);
+    if(!card)continue;
+    const key=metadataKey(game),id=getCusaId(game);
+    if(!key)continue;
+    if(id)game.title_id=id;
+    const cached=metadataCache.get(key);
+    if(cached){renderMetadata(game,cached,card);continue;}
+    if(metadataQueued.has(game))continue;
+    metadataQueued.add(game);
+    metadataQueue.push({game,card});
+  }
+  runMetadataWorker();
+}
 let localMetadataPromise=null;
 async function loadLocalMetadata(){
   if(!localMetadataPromise){
@@ -432,7 +447,7 @@ async function loadOneGameMetadata(game,card){
     renderMetadata(game,localMeta,card);
     return;
   }
-  const metadataApiBase=(window.location.protocol==='file:'||window.location.protocol==='capacitor:'||window.location.hostname==='localhost')?'https://ps4-games-database-fix.vercel.app':'';
+  const metadataApiBase='https://ps4-games-database-fix.vercel.app';
   if(!metadataApiBase){
     const box=card.querySelector('[data-description-box]');
     if(box)setDescriptionContent(box,'Não disponível','Não disponível');
