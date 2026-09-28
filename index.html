@@ -266,7 +266,7 @@ function renderBatch(start=renderedCount, generation=renderGeneration){
 function loadNextBatchIfNeeded(){}
 
 const metadataQueue=[];
-const metadataQueued=new Set();
+const metadataQueued=new WeakSet();
 const metadataCache=new Map();
 const metadataCards=new WeakMap();
 let metadataWorkerRunning=false;
@@ -316,8 +316,8 @@ function queueMetadataGames(games){
     if(id)game.title_id=id;
     const cached=metadataCache.get(key);
     if(cached){renderMetadata(game,cached);continue;}
-    if(metadataQueued.has(key))continue;
-    metadataQueued.add(key);metadataQueue.push(game);
+    if(metadataQueued.has(game))continue;
+    metadataQueued.add(game);metadataQueue.push(game);
   }
   runMetadataWorker();
 }
@@ -344,7 +344,7 @@ async function runMetadataWorker(){
           const box=metadataCards.get(game)?.querySelector('[data-description-box]');
           if(box)setDescriptionContent(box,'Não disponível','Não disponível');
         }
-        metadataQueued.delete(metadataKey(game));
+        metadataQueued.delete(game);
       }
     }catch(err){
       console.warn('Metadados:',err);
@@ -364,7 +364,7 @@ function createGameCard(game) {
   const title=document.createElement('div'); title.className='game-title'; title.textContent=game.name;
   div.appendChild(title);
   const titleIdBox=document.createElement('div'); titleIdBox.dataset.titleIdBox='1'; titleIdBox.style.cssText='font-size:11px;color:var(--muted);margin:-3px 0 8px;'; titleIdBox.textContent='Title ID: '+(game.title_id||'—'); div.appendChild(titleIdBox);
-  const desc=document.createElement('div'); desc.className='game-description'; desc.dataset.descriptionBox='1'; setDescriptionContent(desc,cleanStoreDescription(game.description_en||game.description||''),game.description_pt?cleanStoreDescription(game.description_pt):'carregando…'); div.appendChild(desc);
+  const desc=document.createElement('div'); desc.className='game-description'; desc.dataset.descriptionBox='1'; setDescriptionContent(desc,cleanStoreDescription(game.description_en||game.description||''),game.description_pt?cleanStoreDescription(game.description_pt):'Não disponível'); div.appendChild(desc);
   const links=document.createElement('div'); links.className='download-links';
   const add=(arr,cls,label)=>(arr||[]).forEach((link,i)=>{
     const a=document.createElement('a');
