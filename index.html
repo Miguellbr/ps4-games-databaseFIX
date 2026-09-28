@@ -325,7 +325,7 @@ async function runMetadataWorker(){
   if(metadataWorkerRunning)return;
   metadataWorkerRunning=true;
   while(metadataQueue.length){
-    const batch=metadataQueue.splice(0,5);
+    const batch=metadataQueue.splice(0,20);
     const ids=[...new Set(batch.map(getCusaId).filter(Boolean))],names=batch.filter(g=>!getCusaId(g)).map(g=>g?.name||'').filter(Boolean);
     try{
       const params=new URLSearchParams();
@@ -354,7 +354,7 @@ async function runMetadataWorker(){
         metadataQueued.delete(metadataKey(game));
       });
     }
-    await new Promise(r=>setTimeout(r,150));
+    await new Promise(r=>setTimeout(r,60));
   }
   metadataWorkerRunning=false;
 }
