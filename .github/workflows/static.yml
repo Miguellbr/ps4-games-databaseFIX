@@ -2,27 +2,20 @@
 name: Deploy static content to Pages
 
 on:
-  # Runs on pushes targeting the default branch
   push:
     branches: ["main"]
-
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
 concurrency:
   group: "pages"
   cancel-in-progress: false
 
 jobs:
-  # Single deploy job since we're just deploying
   deploy:
     environment:
       name: github-pages
@@ -36,8 +29,38 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload entire repository
           path: '.'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install dependencies
+        run: npm install
+      - name: Create Android project
+        run: npx cap add android
+      - name: Sync Capacitor
+        run: npx cap sync android
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug
+      - name: Publish APK release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-v1.0.${{ github.run_number }}
+          name: PS4 Games Database APK v1.0.${{ github.run_number }}
+          files: android/app/build/outputs/apk/debug/app-debug.apk
+          make_latest: true
