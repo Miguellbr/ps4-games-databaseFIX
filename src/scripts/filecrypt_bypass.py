@@ -79,6 +79,121 @@ class FileCryptBypass:
         self.evidence_log.append(entry)
         logger.debug(f"[EVIDENCE] {stage}: {json.dumps(data, indent=2)[:200]}...")
 
+    @staticmethod
+    def _inspect_html(html: str, base_url: str) -> Dict[str, Any]:
+        """Inspeciona passivamente o HTML em busca de destinos e endpoints expostos.
+
+        Não executa JavaScript, não resolve CAPTCHA/PoW e não envia requisições
+        adicionais. O objetivo é descobrir o que a própria resposta HTML revela.
+        """
+        from html.parser import HTMLParser
+
+        class Inspector(HTMLParser):
+            def __init__(self):
+                super().__init__(convert_charrefs=True)
+                self.items = []
+                self.in_script = False
+                self.script_chunks = []
+
+            def handle_starttag(self, tag, attrs):
+                attrs_dict = dict(attrs)
+                interesting = {
+                    key: value for key, value in attrs_dict.items()
+                    if key in ('href', 'src', 'action', 'value', 'data-url',
+                               'data-link', 'data-href', 'data-target', 'data-destination')
+                    and value
+                }
+                if interesting:
+                    self.items.append({'tag': tag, 'attrs': interesting})
+                if tag.lower() == 'script':
+                    self.in_script = True
+                    self.script_chunks = []
+
+            def handle_endtag(self, tag):
+                if tag.lower() == 'script' and self.in_script:
+                    text = ''.join(self.script_chunks)
+                    if text.strip():
+                        self.items.append({'tag': 'script', 'text': text[:20000]})
+                    self.in_script = False
+                    self.script_chunks = []
+
+            def handle_data(self, data):
+                if self.in_script:
+                    self.script_chunks.append(data)
+
+        parser = Inspector()
+        try:
+            parser.feed(html or '')
+        except Exception:
+            pass
+
+        # URLs absolutas encontradas literalmente na resposta.
+        raw_urls = re.findall(r'https?://[^\\s"\\'<>]+', html or '', re.IGNORECASE)
+        urls = []
+        seen = set()
+        for raw in raw_urls:
+            value = raw.rstrip('.,;)]}')
+            if value and value not in seen:
+                seen.add(value)
+                urls.append(value)
+
+        # Endpoints internos do FileCrypt, como /Link/1, /Link/2, etc.
+        internal_links = sorted(set(re.findall(r'/Link/\\d+(?:[^\\s"\\'<>]*)?', html or '', re.IGNORECASE)))
+
+        # Scripts relevantes para entender o fluxo, sem executá-los.
+        scripts = sorted(set(re.findall(
+            r'(?:src|href)=["\\\']([^"\\\']*(?:container(?:/link)?|pow_captcha)[^"\\\']*)',
+            html or '', re.IGNORECASE
+        )))
+
+        candidate_urls = []
+        for value in urls:
+            parsed = urlparse(value)
+            host = parsed.netloc.lower()
+            if host and not host.endswith('filecrypt.cc'):
+                candidate_urls.append(value)
+
+        return {
+            'base_url': base_url,
+            'html_length': len(html or ''),
+            'absolute_urls': urls,
+            'external_url_candidates': candidate_urls,
+            'internal_link_endpoints': internal_links,
+            'relevant_scripts': scripts,
+            'interesting_attributes': parser.items,
+        }
+
+    def inspect(self, filecrypt_url: str) -> Dict[str, Any]:
+        """Baixa uma página e faz somente inspeção estática da resposta."""
+        logger.info(f"[INSPECT] Analisando: {filecrypt_url}")
+        try:
+            response = self.session.get(
+                filecrypt_url,
+                timeout=30,
+                allow_redirects=True,
+                headers={'Referer': filecrypt_url}
+            )
+        except requests.RequestException as exc:
+            result = {'success': False, 'error': f'Falha HTTP: {exc}'}
+            self._log_evidence('inspection_error', result)
+            return result
+
+        html = response.text or ''
+        inspection = self._inspect_html(html, response.url)
+        inspection.update({
+            'success': True,
+            'status_code': response.status_code,
+            'requested_url': filecrypt_url,
+            'response_url': response.url,
+            'redirect_history': [
+                {'status': r.status_code, 'url': r.url, 'location': r.headers.get('Location')}
+                for r in response.history
+            ],
+            'content_type': response.headers.get('Content-Type', ''),
+        })
+        self._log_evidence('static_inspection', inspection)
+        return inspection
+
     def _extract_pow_params(self, html: str, url: str) -> Optional[PoWChallenge]:
         """Detecta desafios PoW de formato genérico, sem presumir o mecanismo específico."""
         self._log_evidence('html_raw', {'length': len(html), 'url': url})
@@ -453,6 +568,7 @@ class FileCryptBypass:
 
 if __name__ == "__main__":
     import argparse
+    import sys
 
     parser = argparse.ArgumentParser(
         description='Inspeciona e retoma sessões FileCrypt após verificação manual.'
@@ -468,9 +584,40 @@ if __name__ == "__main__":
                         help='Após a carga inicial, faz uma nova tentativa usando a mesma sessão')
     parser.add_argument('--attempts', type=int, default=1,
                         help='Número de tentativas no --retry (máx. 3)')
+    parser.add_argument('--inspect', action='store_true',
+                        help='Inspeciona estaticamente HTML/atributos/scripts sem tentar resolver CAPTCHA/PoW')
     args = parser.parse_args()
 
     bypass = FileCryptBypass()
+
+    if args.inspect:
+        inspection = bypass.inspect(args.url)
+        print("\n" + "=" * 60)
+        print("INSPEÇÃO ESTÁTICA DO FILECRYPT")
+        print("=" * 60)
+        print(f"HTTP: {inspection.get('status_code', '?')}")
+        print(f"URL da resposta: {inspection.get('response_url', '?')}")
+        print(f"HTML: {inspection.get('html_length', 0)} bytes")
+        print(f"URLs absolutas: {len(inspection.get('absolute_urls', []))}")
+        print(f"Candidatos externos: {len(inspection.get('external_url_candidates', []))}")
+        print(f"Endpoints /Link/*: {len(inspection.get('internal_link_endpoints', []))}")
+        print(f"Scripts relevantes: {len(inspection.get('relevant_scripts', []))}")
+        print("\n--- CANDIDATOS EXTERNOS ---")
+        for value in inspection.get('external_url_candidates', []):
+            print(value)
+        print("\n--- /Link/* ---")
+        for value in inspection.get('internal_link_endpoints', []):
+            print(value)
+        print("\n--- SCRIPTS ---")
+        for value in inspection.get('relevant_scripts', []):
+            print(value)
+        print("\n--- ATRIBUTOS INTERESSANTES ---")
+        for item in inspection.get('interesting_attributes', []):
+            print(json.dumps(item, ensure_ascii=False))
+        with open('filecrypt_inspection.json', 'w', encoding='utf-8') as f:
+            json.dump(inspection, f, indent=2, ensure_ascii=False)
+        print("\nInspeção salva em: filecrypt_inspection.json")
+        sys.exit(0)
 
     if args.load_session:
         try:
