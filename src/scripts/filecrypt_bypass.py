@@ -233,6 +233,65 @@ class FileCryptBypass:
 
         return None
 
+    def _result_after_session_refresh(self, filecrypt_url: str, attempt: int) -> Optional[BypassResult]:
+        """Tenta novamente usando a mesma sessão/cookies já existentes.
+
+        Não resolve nem contorna desafios. Serve para continuar uma sessão
+        depois que a verificação foi concluída fora deste resolver.
+        """
+        try:
+            response = self.session.get(
+                filecrypt_url,
+                timeout=30,
+                allow_redirects=True,
+                headers={'Referer': filecrypt_url}
+            )
+            html = response.text or ''
+            self._log_evidence('session_refresh', {
+                'attempt': attempt,
+                'status': response.status_code,
+                'url': response.url,
+                'content_length': len(html),
+                'cookies': list(self.session.cookies.keys())
+            })
+
+            direct = self._find_final_url(response) or self._extract_final_link({}, html)
+            if direct:
+                return BypassResult(
+                    success=True,
+                    final_url=direct,
+                    response_data={'attempt': attempt, 'url': response.url},
+                    cookies=dict(self.session.cookies),
+                    evidence_log=self.evidence_log
+                )
+            return None
+        except requests.RequestException as e:
+            self._log_evidence('session_refresh_error', {
+                'attempt': attempt,
+                'error': str(e)
+            })
+            return None
+
+    def retry_after_verification(self, filecrypt_url: str, attempts: int = 1) -> BypassResult:
+        """Retoma a mesma sessão após uma verificação feita externamente.
+
+        Não executa CAPTCHA/PoW. Apenas reutiliza os cookies da sessão atual
+        e verifica se o FileCrypt já liberou um destino explícito.
+        """
+        attempts = max(1, min(int(attempts), 3))
+        for attempt in range(1, attempts + 1):
+            result = self._result_after_session_refresh(filecrypt_url, attempt)
+            if result:
+                return result
+
+        return BypassResult(
+            success=False,
+            error_message='needs_verification: sessão ainda não liberada pelo FileCrypt',
+            response_data={'url': filecrypt_url, 'attempts': attempts},
+            cookies=dict(self.session.cookies),
+            evidence_log=self.evidence_log
+        )
+
     def bypass(self, filecrypt_url: str) -> BypassResult:
         """
         Carrega o FileCrypt, segue redirecionamentos normais e extrai um destino
