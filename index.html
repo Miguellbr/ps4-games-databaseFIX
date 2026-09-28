@@ -260,7 +260,7 @@ function renderBatch(start=renderedCount, generation=renderGeneration){
     renderTimer=null;
     document.getElementById('searchInfo').textContent=q
       ? (filteredGames.length.toLocaleString()+' resultado(s) para “'+q+'” • '+renderedCount.toLocaleString()+' carregados')
-      : (renderedCount.toLocaleString()+' de '+filteredGames.length.toLocaleString()+' jogos carregados');
+      : (renderedCount.toLocaleString()+' de '+filteredGames.length.toLocaleString()+' jogos exibidos');
   }
 }
 function loadNextBatchIfNeeded(){}
@@ -410,7 +410,7 @@ if(tokens.length===1&&q.length>=4){const t=tokens[0];if(nt.some(n=>levenshtein(t
 return 0;}
 function applyFilters(){const rawQ=(document.getElementById('searchInput').value||'').trim(),type=document.getElementById('typeFilter').value,min=document.getElementById('linksFilter').value,region=document.getElementById('regionFilter').value,firmware=document.getElementById('firmwareFilter')?.value||'all',version=document.getElementById('versionFilter')?.value||'all',idx=activeSource.startsWith('lib:')?Number(activeSource.slice(4)):-1;filteredGames=allGames.filter(g=>{const mq=!rawQ||searchScore(g,rawQ)>0,mt=type==='all'||gameType(g)===type,links=Number(g.total_links||0),ml=min==='all'||(min==='0'?links===0:links>=Number(min)),mr=region==='all'||g.region===region,ms=activeSource==='all'||g._source===activeSource||(idx>=0&&g._source===importedLibraries[idx]?.name),fw=parseFloat(String(g.min_fw||'').replace(/[^0-9.]/g,'')),mf=firmware==='all'||(firmware==='9'&&fw>0&&fw<=9)||(firmware==='11'&&fw>9&&fw<=11)||(firmware==='12'&&fw>11&&fw<=12)||(firmware==='higher'&&fw>12),mv=version==='all'||!!String(g.version||'').trim(),ma=!activeLetter||normalizeLetter(g.name)===activeLetter;return mq&&mt&&ml&&mr&&ms&&mf&&mv&&ma;});if(rawQ){filteredGames.sort((a,b)=>searchScore(b,rawQ)-searchScore(a,rawQ));saveSearch(rawQ);}renderedCount=0;renderBatch(0);}
 function searchGames(){applyFilters();}
-function clearSearch(){const i=document.getElementById('searchInput');i.value='';applyFilters();i.focus();}
+function clearSearch(){const i=document.getElementById('searchInput');i.value='';currentMode='all';activeSource='all';filteredGames=allGames;renderedCount=0;renderBatch(0);i.focus();}
 function clearAllFilters(){['typeFilter','linksFilter','regionFilter','sourceFilter','firmwareFilter','versionFilter'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='all';});activeLetter='';buildAlphaNav();applyFilters();}
 function toggleFilters(){const p=document.getElementById('filterPanel'),b=document.getElementById('filterToggleBtn');p.classList.toggle('show');if(b)b.textContent=p.classList.contains('show')?'✕ Fechar filtros':'🎛️ Filtros';}
 function toggleFavorite(name,button) {
