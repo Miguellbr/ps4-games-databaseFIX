@@ -468,17 +468,17 @@ class FileCryptBypass:
                     r"https?://[^\\s\"'<>]+", html, re.IGNORECASE
                 )))
                 location_refs = sorted(set(re.findall(
-                    r"""(?:window\\.)?location(?:\\.href|\\.assign|\\.replace)?\\s*(?:=|\\()\\s*['"]([^'"]+)['"]""",
+                    r"""(?:window\.)?location(?:\.href|\.assign|\.replace)?\s*(?:=|\()\s*['"]([^'"]+)['"]""",
                     html,
                     re.IGNORECASE
                 )))
                 form_actions = sorted(set(re.findall(
-                    r"""<form[^>]+action\\s*=\\s*['"]([^'"]+)['"]""",
+                    r"""<form[^>]+action\s*=\s*['"]([^'"]+)['"]""",
                     html,
                     re.IGNORECASE
                 )))
                 meta_refresh = sorted(set(re.findall(
-                    r"""<meta[^>]+http-equiv\\s*=\\s*['"]refresh['"][^>]+content\\s*=\\s*['"][^'"]*url=([^'"]+)""",
+                    r"""<meta[^>]+http-equiv\s*=\s*['"]refresh['"][^>]+content\s*=\s*['"][^'"]*url=([^'"]+)""",
                     html,
                     re.IGNORECASE
                 )))
