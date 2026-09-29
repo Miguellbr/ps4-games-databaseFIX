@@ -490,11 +490,14 @@ class FileCryptBypass:
 
                 # Trechos curtos somente quando há sinais de navegação/download.
                 snippets = []
-                for pattern in (
-                    r'(?i).{0,180}(?:location\\.|window\\.location|form\\.action|submit\\(|mediafire\\.com|1fichier\\.com|1file\\.com|mega\\.nz).{0,300}'
-                ):
-                    snippets.extend(re.findall(pattern, html, re.DOTALL))
-                item['navigation_snippets'] = [s[:600] for s in snippets[:12]]
+                for line in html.splitlines():
+                    low = line.lower()
+                    if any(token in low for token in (
+                        'location.', 'window.location', 'form.action', 'submit(',
+                        'mediafire.com', '1fichier.com', '1file.com', 'mega.nz'
+                    )):
+                        snippets.append(line.strip()[:600])
+                item['navigation_snippets'] = snippets[:12]
 
                 self._log_evidence('intermediary_inspection', {
                     'url': url,
