@@ -406,6 +406,115 @@ class FileCryptBypass:
             'chains': chains,
         }
 
+    def inspect_intermediaries(self, trace: Dict[str, Any], max_pages: int = 5) -> Dict[str, Any]:
+        """Inspeciona passivamente páginas intermediárias já descobertas pelo trace.
+
+        Faz somente GET, não executa JavaScript e não envia POST. O objetivo é
+        separar uma página intermediária/ad/telemetria de uma página que revele
+        explicitamente um destino de download.
+        """
+        pages = []
+        seen = set()
+
+        chains = trace.get('redirect_chains', [])
+        starts = []
+        for chain in chains:
+            final_url = chain.get('final_url')
+            if final_url:
+                starts.append(final_url)
+
+        # Também permite usar o trace sem --follow-trace: pega Locations finais.
+        if not starts:
+            for candidate in trace.get('candidates', []):
+                location = candidate.get('location')
+                if location:
+                    starts.append(urljoin(candidate.get('url', ''), location))
+
+        for url in starts[:max(1, min(int(max_pages), 10))]:
+            if not url or url in seen:
+                continue
+            seen.add(url)
+
+            item = {
+                'url': url,
+                'requested': False,
+            }
+            try:
+                response = self.session.get(
+                    url,
+                    timeout=20,
+                    allow_redirects=False,
+                    headers={'Referer': trace.get('response_url') or url}
+                )
+                html = response.text or ''
+                item.update({
+                    'requested': True,
+                    'status_code': response.status_code,
+                    'response_url': response.url,
+                    'content_type': response.headers.get('Content-Type', ''),
+                    'content_length': len(response.content or b''),
+                    'location': response.headers.get('Location'),
+                    'server': response.headers.get('Server', ''),
+                    'cf_ray': response.headers.get('CF-Ray', ''),
+                    'contains_known_destination': any(
+                        host in html.lower()
+                        for host in ('mediafire.com', '1file.com', '1fichier.com', 'mega.nz')
+                    ),
+                    'cloudflare_challenge': bool(self._detect_cloudflare_challenge(html)),
+                })
+
+                # Destinos explícitos e padrões de navegação, sem executar JS.
+                absolute_urls = sorted(set(re.findall(
+                    r"https?://[^\\s\"'<>]+", html, re.IGNORECASE
+                )))
+                location_refs = sorted(set(re.findall(
+                    r"""(?:window\\.)?location(?:\\.href|\\.assign|\\.replace)?\\s*(?:=|\\()\\s*['"]([^'"]+)['"]""",
+                    html,
+                    re.IGNORECASE
+                )))
+                form_actions = sorted(set(re.findall(
+                    r"""<form[^>]+action\\s*=\\s*['"]([^'"]+)['"]""",
+                    html,
+                    re.IGNORECASE
+                )))
+                meta_refresh = sorted(set(re.findall(
+                    r"""<meta[^>]+http-equiv\\s*=\\s*['"]refresh['"][^>]+content\\s*=\\s*['"][^'"]*url=([^'"]+)""",
+                    html,
+                    re.IGNORECASE
+                )))
+
+                item['absolute_urls'] = absolute_urls[:50]
+                item['location_references'] = location_refs[:50]
+                item['form_actions'] = form_actions[:20]
+                item['meta_refresh'] = meta_refresh[:20]
+
+                # Trechos curtos somente quando há sinais de navegação/download.
+                snippets = []
+                for pattern in (
+                    r'(?i).{0,180}(?:location\\.|window\\.location|form\\.action|submit\\(|mediafire\\.com|1fichier\\.com|1file\\.com|mega\\.nz).{0,300}'
+                ):
+                    snippets.extend(re.findall(pattern, html, re.DOTALL))
+                item['navigation_snippets'] = [s[:600] for s in snippets[:12]]
+
+                self._log_evidence('intermediary_inspection', {
+                    'url': url,
+                    'status_code': response.status_code,
+                    'content_length': len(html),
+                    'known_destination': item['contains_known_destination'],
+                    'form_actions': item['form_actions'],
+                    'location_references': item['location_references'],
+                })
+            except requests.RequestException as exc:
+                item['error'] = str(exc)
+                self._log_evidence('intermediary_inspection_error', item)
+
+            pages.append(item)
+
+        return {
+            'success': True,
+            'pages': pages,
+        }
+
     def _extract_pow_params(self, html: str, url: str) -> Optional[PoWChallenge]:
         """Detecta desafios PoW de formato genérico, sem presumir o mecanismo específico."""
         self._log_evidence('html_raw', {'length': len(html), 'url': url})
@@ -806,6 +915,10 @@ if __name__ == "__main__":
                         help='Além do --trace, segue somente redirects HTTP e mostra cada salto')
     parser.add_argument('--max-trace-hops', type=int, default=10,
                         help='Máximo de redirects HTTP por endpoint no --follow-trace (máx. 20)')
+    parser.add_argument('--inspect-intermediaries', action='store_true',
+                        help='Inspeciona passivamente o HTML das páginas intermediárias descobertas')
+    parser.add_argument('--max-intermediary-pages', type=int, default=5,
+                        help='Máximo de páginas intermediárias a inspecionar (máx. 10)')
     args = parser.parse_args()
 
     bypass = FileCryptBypass()
@@ -885,6 +998,29 @@ if __name__ == "__main__":
                     print(f"  FINAL: {chain['final_url']}")
                 if chain.get('stopped_reason'):
                     print(f"  PARADA: {chain['stopped_reason']}")
+
+        if args.inspect_intermediaries:
+            inspected = bypass.inspect_intermediaries(trace, args.max_intermediary_pages)
+            trace['intermediary_inspection'] = inspected
+
+            print("\n--- INSPEÇÃO DAS PÁGINAS INTERMEDIÁRIAS ---")
+            for page in inspected.get('pages', []):
+                print(f"\nURL: {page.get('url')}")
+                print(f"  HTTP: {page.get('status_code', '?')}")
+                print(f"  HTML: {page.get('content_length', 0)} bytes")
+                print(f"  Cloudflare: {'SIM' if page.get('cloudflare_challenge') else 'não detectado'}")
+                print(f"  Destino conhecido no HTML: {'SIM' if page.get('contains_known_destination') else 'não'}")
+                for action in page.get('form_actions', []):
+                    print(f"  FORM ACTION: {action}")
+                for loc in page.get('location_references', []):
+                    print(f"  LOCATION: {loc}")
+                for meta in page.get('meta_refresh', []):
+                    print(f"  META REFRESH: {meta}")
+                for snippet in page.get('navigation_snippets', []):
+                    print(f"  TRECHO: {snippet[:600]}")
+
+        with open('filecrypt_trace.json', 'w', encoding='utf-8') as f:
+            json.dump(trace, f, indent=2, ensure_ascii=False)
 
         print("\nTrace salvo em: filecrypt_trace.json")
         sys.exit(0)
