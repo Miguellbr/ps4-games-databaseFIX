@@ -518,6 +518,80 @@ class FileCryptBypass:
             'pages': pages,
         }
 
+    def follow_passive_intermediaries(self, trace: Dict[str, Any], max_steps: int = 8) -> Dict[str, Any]:
+        """Segue apenas HTTP redirects e meta-refreshes explicitamente expostos.
+
+        Faz somente GET, não executa JavaScript, não envia POST e não tenta
+        resolver CAPTCHA/PoW.
+        """
+        queue = []
+        seen = set()
+        for page in trace.get('pages', []):
+            for value in page.get('meta_refresh', []) or []:
+                queue.append(urljoin(page.get('url', ''), value.strip()))
+            location = page.get('location')
+            if location:
+                queue.append(urljoin(page.get('url', ''), location))
+
+        steps = []
+        while queue and len(steps) < max(1, min(int(max_steps), 20)):
+            url = queue.pop(0)
+            if not url or url in seen:
+                continue
+            seen.add(url)
+            item = {'url': url}
+            try:
+                response = self.session.get(
+                    url,
+                    timeout=20,
+                    allow_redirects=False,
+                    headers={'Referer': trace.get('response_url') or url}
+                )
+                html = response.text or ''
+                item.update({
+                    'status_code': response.status_code,
+                    'response_url': response.url,
+                    'content_type': response.headers.get('Content-Type', ''),
+                    'content_length': len(response.content or b''),
+                    'location': response.headers.get('Location'),
+                    'cloudflare_challenge': bool(self._detect_cloudflare_challenge(html)),
+                    'contains_known_destination': any(
+                        host in (html or '').lower()
+                        for host in ('mediafire.com', '1file.com', '1fichier.com', 'mega.nz')
+                    ),
+                })
+
+                if response.headers.get('Location'):
+                    queue.append(urljoin(response.url, response.headers['Location']))
+
+                meta_refresh = re.findall(
+                    r"""<meta[^>]+http-equiv\s*=\s*['"]refresh['"][^>]+content\s*=\s*['"][^'"]*url\s*=\s*([^'"]+)""",
+                    html,
+                    re.IGNORECASE
+                )
+                item['meta_refresh'] = sorted(set(meta_refresh))[:20]
+                for value in item['meta_refresh']:
+                    queue.append(urljoin(response.url, value.strip()))
+
+                absolute_urls = re.findall(r"""https?://[^\s"'<>]+""", html, re.IGNORECASE)
+                known = [
+                    u for u in absolute_urls
+                    if any(host in urlparse(u).netloc.lower()
+                           for host in ('mediafire.com', '1file.com', '1fichier.com', 'mega.nz'))
+                ]
+                item['known_destination_urls'] = sorted(set(known))[:20]
+            except requests.RequestException as exc:
+                item['error'] = str(exc)
+
+            steps.append(item)
+
+            if item.get('known_destination_urls'):
+                break
+
+        result = {'success': True, 'steps': steps}
+        self._log_evidence('passive_intermediary_follow', result)
+        return result
+
     def _extract_pow_params(self, html: str, url: str) -> Optional[PoWChallenge]:
         """Detecta desafios PoW de formato genérico, sem presumir o mecanismo específico."""
         self._log_evidence('html_raw', {'length': len(html), 'url': url})
