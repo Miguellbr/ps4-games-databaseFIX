@@ -194,6 +194,134 @@ class FileCryptBypass:
         self._log_evidence('static_inspection', inspection)
         return inspection
 
+    def trace(self, filecrypt_url: str, max_requests: int = 20) -> Dict[str, Any]:
+        """Rastreia passivamente endpoints GET expostos pela própria página.
+
+        Executa apenas GETs para URLs que aparecem literalmente no HTML/JS
+        recebido, restringindo-se ao mesmo host. Não executa JavaScript, não
+        envia POSTs e não tenta resolver Cloudflare/CAPTCHA/PoW.
+        """
+        logger.info(f"[TRACE] Analisando endpoints expostos por: {filecrypt_url}")
+        try:
+            response = self.session.get(
+                filecrypt_url,
+                timeout=30,
+                allow_redirects=True,
+                headers={'Referer': filecrypt_url}
+            )
+        except requests.RequestException as exc:
+            result = {'success': False, 'error': f'Falha HTTP: {exc}'}
+            self._log_evidence('trace_error', result)
+            return result
+
+        html = response.text or ''
+        base = response.url
+        base_host = urlparse(base).netloc.lower()
+
+        cloudflare = self._detect_cloudflare_challenge(html)
+        filecrypt_pow = self._detect_filecrypt_pow(html)
+
+        # Captura URLs absolutas e caminhos relativos encontrados no HTML/JS.
+        raw_candidates = []
+        raw_candidates.extend(re.findall(r"https?://[^\s\"'<>]+", html, re.IGNORECASE))
+        raw_candidates.extend(re.findall(
+            r"""(?:href|src|action|data-url|data-link|data-href|data-target|data-destination)\s*=\s*["']([^"']+)["']""",
+            html,
+            re.IGNORECASE
+        ))
+        raw_candidates.extend(re.findall(
+            r"""(?:['"])(/[^'"]+(?:\.php|/Link/[^'"]*|/Container/[^'"]*)[^'"]*)(?:['"])""",
+            html,
+            re.IGNORECASE
+        ))
+
+        candidates = []
+        seen = set()
+        for raw in raw_candidates:
+            raw = raw.strip()
+            if not raw or raw.startswith(('javascript:', 'data:', '#')):
+                continue
+            candidate = urljoin(base, raw)
+            parsed = urlparse(candidate)
+            if parsed.netloc.lower() != base_host:
+                continue
+
+            path_lower = parsed.path.lower()
+            query_lower = parsed.query.lower()
+            relevant = (
+                path_lower.endswith('.php')
+                or '/link/' in path_lower
+                or 'container=' in query_lower
+                or 'container-' in query_lower
+            )
+            if not relevant:
+                continue
+
+            # Evita repetir a própria página e URLs duplicadas.
+            normalized = candidate
+            if normalized == base or normalized in seen:
+                continue
+            seen.add(normalized)
+            candidates.append(normalized)
+
+        candidates = candidates[:max(1, min(int(max_requests), 50))]
+
+        results = []
+        for candidate in candidates:
+            item = {
+                'url': candidate,
+                'method': 'GET',
+                'requested': False,
+            }
+            try:
+                traced = self.session.get(
+                    candidate,
+                    timeout=20,
+                    allow_redirects=False,
+                    headers={'Referer': base}
+                )
+                item.update({
+                    'requested': True,
+                    'status_code': traced.status_code,
+                    'content_type': traced.headers.get('Content-Type', ''),
+                    'content_length': len(traced.content or b''),
+                    'location': traced.headers.get('Location'),
+                    'server': traced.headers.get('Server', ''),
+                    'cf_ray': traced.headers.get('CF-Ray', ''),
+                    'response_url': traced.url,
+                })
+                response_text = traced.text or ''
+                item['contains_known_destination'] = any(
+                    host in response_text.lower()
+                    for host in ('mediafire.com', '1file.com', '1fichier.com')
+                )
+                direct = self._find_final_url(traced)
+                if direct:
+                    item['revealed_final_url'] = direct
+                self._log_evidence('trace_request', item)
+            except requests.RequestException as exc:
+                item['error'] = str(exc)
+                self._log_evidence('trace_request_error', item)
+            results.append(item)
+
+        result = {
+            'success': True,
+            'requested_url': filecrypt_url,
+            'response_url': base,
+            'status_code': response.status_code,
+            'content_length': len(html),
+            'cloudflare_challenge': cloudflare,
+            'filecrypt_pow': filecrypt_pow,
+            'candidate_count': len(candidates),
+            'candidates': results,
+        }
+        self._log_evidence('trace_complete', {
+            'requested_url': filecrypt_url,
+            'candidate_count': len(candidates),
+            'status_code': response.status_code,
+        })
+        return result
+
     def _extract_pow_params(self, html: str, url: str) -> Optional[PoWChallenge]:
         """Detecta desafios PoW de formato genérico, sem presumir o mecanismo específico."""
         self._log_evidence('html_raw', {'length': len(html), 'url': url})
@@ -586,6 +714,10 @@ if __name__ == "__main__":
                         help='Número de tentativas no --retry (máx. 3)')
     parser.add_argument('--inspect', action='store_true',
                         help='Inspeciona estaticamente HTML/atributos/scripts sem tentar resolver CAPTCHA/PoW')
+    parser.add_argument('--trace', action='store_true',
+                        help='Rastreia somente endpoints GET expostos no HTML/JS, sem executar CAPTCHA/PoW')
+    parser.add_argument('--max-trace-requests', type=int, default=20,
+                        help='Máximo de endpoints GET no --trace (máx. 50)')
     args = parser.parse_args()
 
     bypass = FileCryptBypass()
@@ -617,6 +749,37 @@ if __name__ == "__main__":
         with open('filecrypt_inspection.json', 'w', encoding='utf-8') as f:
             json.dump(inspection, f, indent=2, ensure_ascii=False)
         print("\nInspeção salva em: filecrypt_inspection.json")
+        sys.exit(0)
+
+    if args.trace:
+        trace = bypass.trace(args.url, args.max_trace_requests)
+        print("\n" + "=" * 60)
+        print("TRACE PASSIVO DO FILECRYPT")
+        print("=" * 60)
+        print(f"HTTP: {trace.get('status_code', '?')}")
+        print(f"URL da resposta: {trace.get('response_url', '?')}")
+        print(f"HTML: {trace.get('content_length', 0)} bytes")
+        print(f"Cloudflare: {'SIM' if trace.get('cloudflare_challenge') else 'não detectado'}")
+        print(f"FileCrypt PoW: {'SIM' if trace.get('filecrypt_pow') else 'não detectado'}")
+        print(f"Endpoints GET encontrados: {trace.get('candidate_count', 0)}")
+        print("\n--- REQUISIÇÕES ---")
+        for item in trace.get('candidates', []):
+            print(f"\n{item.get('method', 'GET')} {item.get('url')}")
+            print(f"  Status: {item.get('status_code', '?')}")
+            print(f"  Content-Type: {item.get('content_type', '')}")
+            print(f"  Tamanho: {item.get('content_length', 0)}")
+            if item.get('location'):
+                print(f"  Location: {item['location']}")
+            if item.get('revealed_final_url'):
+                print(f"  DESTINO FINAL EXPLÍCITO: {item['revealed_final_url']}")
+            if item.get('contains_known_destination'):
+                print("  ⚠ Resposta contém referência a MediaFire/1File/1Fichier")
+            if item.get('error'):
+                print(f"  Erro: {item['error']}")
+
+        with open('filecrypt_trace.json', 'w', encoding='utf-8') as f:
+            json.dump(trace, f, indent=2, ensure_ascii=False)
+        print("\nTrace salvo em: filecrypt_trace.json")
         sys.exit(0)
 
     if args.load_session:
