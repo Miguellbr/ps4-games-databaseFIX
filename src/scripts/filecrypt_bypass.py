@@ -322,6 +322,90 @@ class FileCryptBypass:
         })
         return result
 
+    def follow_trace(self, trace: Dict[str, Any], max_hops: int = 10) -> Dict[str, Any]:
+        """Segue somente redirecionamentos HTTP descobertos pelo trace.
+
+        Não executa JavaScript, não envia POSTs e não tenta resolver
+        CAPTCHA/PoW. Cada salto é um GET comum com redirects desativados,
+        apenas para registrar a cadeia HTTP explícita.
+        """
+        max_hops = max(1, min(int(max_hops), 20))
+        chains = []
+
+        for candidate in trace.get('candidates', []):
+            start_url = candidate.get('url')
+            if not start_url:
+                continue
+
+            chain = {
+                'start_url': start_url,
+                'hops': [],
+                'final_url': None,
+                'stopped_reason': None,
+            }
+            current = start_url
+            seen = set()
+
+            for hop in range(1, max_hops + 1):
+                if current in seen:
+                    chain['stopped_reason'] = 'loop_detected'
+                    break
+                seen.add(current)
+
+                try:
+                    response = self.session.get(
+                        current,
+                        timeout=20,
+                        allow_redirects=False,
+                        headers={'Referer': start_url}
+                    )
+                except requests.RequestException as exc:
+                    chain['hops'].append({
+                        'hop': hop,
+                        'url': current,
+                        'error': str(exc),
+                    })
+                    chain['stopped_reason'] = 'request_error'
+                    break
+
+                location = response.headers.get('Location')
+                hop_data = {
+                    'hop': hop,
+                    'url': current,
+                    'status_code': response.status_code,
+                    'content_type': response.headers.get('Content-Type', ''),
+                    'content_length': len(response.content or b''),
+                    'location': location,
+                    'server': response.headers.get('Server', ''),
+                    'cf_ray': response.headers.get('CF-Ray', ''),
+                }
+                chain['hops'].append(hop_data)
+                self._log_evidence('redirect_trace_hop', hop_data)
+
+                if not (300 <= response.status_code < 400) or not location:
+                    chain['final_url'] = current
+                    chain['stopped_reason'] = 'non_redirect'
+                    break
+
+                next_url = urljoin(current, location)
+                parsed = urlparse(next_url)
+                if parsed.scheme not in ('http', 'https') or not parsed.netloc:
+                    chain['stopped_reason'] = 'invalid_location'
+                    break
+
+                current = next_url
+            else:
+                chain['final_url'] = current
+                chain['stopped_reason'] = 'max_hops'
+
+            chains.append(chain)
+
+        return {
+            'success': True,
+            'max_hops': max_hops,
+            'chains': chains,
+        }
+
     def _extract_pow_params(self, html: str, url: str) -> Optional[PoWChallenge]:
         """Detecta desafios PoW de formato genérico, sem presumir o mecanismo específico."""
         self._log_evidence('html_raw', {'length': len(html), 'url': url})
@@ -718,6 +802,10 @@ if __name__ == "__main__":
                         help='Rastreia somente endpoints GET expostos no HTML/JS, sem executar CAPTCHA/PoW')
     parser.add_argument('--max-trace-requests', type=int, default=20,
                         help='Máximo de endpoints GET no --trace (máx. 50)')
+    parser.add_argument('--follow-trace', action='store_true',
+                        help='Além do --trace, segue somente redirects HTTP e mostra cada salto')
+    parser.add_argument('--max-trace-hops', type=int, default=10,
+                        help='Máximo de redirects HTTP por endpoint no --follow-trace (máx. 20)')
     args = parser.parse_args()
 
     bypass = FileCryptBypass()
@@ -751,7 +839,7 @@ if __name__ == "__main__":
         print("\nInspeção salva em: filecrypt_inspection.json")
         sys.exit(0)
 
-    if args.trace:
+    if args.trace or args.follow_trace:
         trace = bypass.trace(args.url, args.max_trace_requests)
         print("\n" + "=" * 60)
         print("TRACE PASSIVO DO FILECRYPT")
@@ -779,6 +867,25 @@ if __name__ == "__main__":
 
         with open('filecrypt_trace.json', 'w', encoding='utf-8') as f:
             json.dump(trace, f, indent=2, ensure_ascii=False)
+        if args.follow_trace:
+            followed = bypass.follow_trace(trace, args.max_trace_hops)
+            trace['redirect_chains'] = followed.get('chains', [])
+
+            print("\n--- CADEIAS DE REDIRECT HTTP ---")
+            for chain in trace['redirect_chains']:
+                print(f"\nINÍCIO: {chain.get('start_url')}")
+                for hop in chain.get('hops', []):
+                    print(
+                        f"  [{hop.get('hop')}] {hop.get('status_code', '?')} "
+                        f"{hop.get('url')}"
+                    )
+                    if hop.get('location'):
+                        print(f"      -> {hop['location']}")
+                if chain.get('final_url'):
+                    print(f"  FINAL: {chain['final_url']}")
+                if chain.get('stopped_reason'):
+                    print(f"  PARADA: {chain['stopped_reason']}")
+
         print("\nTrace salvo em: filecrypt_trace.json")
         sys.exit(0)
 
