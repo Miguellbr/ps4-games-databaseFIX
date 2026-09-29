@@ -513,38 +513,25 @@ function createGameCard(game) {
   const titleIdBox=document.createElement('div'); titleIdBox.dataset.titleIdBox='1'; titleIdBox.style.cssText='font-size:11px;color:var(--muted);margin:-3px 0 8px;'; titleIdBox.textContent='Title ID: '+(game.title_id||'—'); div.appendChild(titleIdBox);
   const desc=document.createElement('div'); desc.className='game-description'; desc.dataset.descriptionBox='1'; setDescriptionContent(desc,cleanStoreDescription(game.description_en||game.description||''),game.description_pt?cleanStoreDescription(game.description_pt):'Não disponível'); div.appendChild(desc);
   const links=document.createElement('div'); links.className='download-links';
-  const isFilecryptUrl=(value)=>/filecrypt\\.cc/i.test(String(value||''));
-  const isDirectMirror=(value,host)=>{
-    const url=String(value||'').toLowerCase();
-    if(host==='mediafire') return /(?:^|\\/)mediafire\\.com\\/file\\//i.test(url);
-    if(host==='1file') return /(?:^|\\/)1fichier\\.com\\/\\?/i.test(url) || /(?:^|\\/)1fichier\\.com\\/file\\//i.test(url);
-    return false;
-  };
-  const add=(arr,cls,label)=>{
-    const urls=(Array.isArray(arr)?arr:[arr]).filter(Boolean);
-    const host=cls.replace(/^btn-/,'');
-    // O catálogo pode conter FileCrypt junto com o destino direto. Nesse caso,
-    // mostramos o destino direto e não fazemos o usuário passar pelo FileCrypt.
-    const hasDirect=urls.some(url=>isDirectMirror(url,host));
-    const visibleUrls=hasDirect ? urls.filter(url=>!isFilecryptUrl(url)) : urls;
-    visibleUrls.forEach((link,i)=>{
-      if(window.downloadResolver){
-        const a=window.downloadResolver.createDownloadLink(
-          link,
-          game.title || game.name,
-          host,
-          i,
-          label
-        );
-        links.appendChild(a);
-      } else {
-        const a=document.createElement('a');
-        a.href=link;
-        a.className='download-btn '+cls; a.textContent=`${label} ${i+1}`; a.target='_blank'; a.rel='noopener noreferrer';
-        links.appendChild(a);
-      }
-    });
-  };
+  const add=(arr,cls,label)=>(arr||[]).forEach((link,i)=>{
+    if(!link) return;
+    if(window.downloadResolver){
+      const host=cls.replace(/^btn-/,'');
+      const a=window.downloadResolver.createDownloadLink(
+        link,
+        game.title || game.name,
+        host,
+        i,
+        label
+      );
+      links.appendChild(a);
+    } else {
+      const a=document.createElement('a');
+      a.href=link;
+      a.className='download-btn '+cls; a.textContent=`${label} ${i+1}`; a.target='_blank'; a.rel='noopener noreferrer';
+      links.appendChild(a);
+    }
+  });
   add(game.download_links?.mediafire,'btn-mediafire','Mediafire');
   add(game.download_links?.['1file'],'btn-1file','1File');
   add(game.download_links?.other,'btn-other','Mirror'); add(game.download_links?.pkg,'btn-other','PKG');
