@@ -996,6 +996,10 @@ if __name__ == "__main__":
                         help='Inspeciona passivamente o HTML das páginas intermediárias descobertas')
     parser.add_argument('--max-intermediary-pages', type=int, default=5,
                         help='Máximo de páginas intermediárias a inspecionar (máx. 10)')
+    parser.add_argument('--follow-intermediaries', action='store_true',
+                        help='Após inspecionar, segue HTTP redirects e meta-refreshes passivamente')
+    parser.add_argument('--max-intermediary-steps', type=int, default=8,
+                        help='Máximo de etapas no --follow-intermediaries (máx. 20)')
     args = parser.parse_args()
 
     bypass = FileCryptBypass()
@@ -1096,6 +1100,27 @@ if __name__ == "__main__":
                 for snippet in page.get('navigation_snippets', []):
                     print(f"  TRECHO: {snippet[:600]}")
 
+        if args.follow_intermediaries:
+            followed_intermediaries = bypass.follow_passive_intermediaries(
+                inspected if args.inspect_intermediaries else trace,
+                args.max_intermediary_steps
+            )
+            trace['passive_intermediary_follow'] = followed_intermediaries
+
+            print("\n--- CADEIA PASSIVA DE INTERMEDIÁRIOS ---")
+            for step in followed_intermediaries.get('steps', []):
+                print(f"\nURL: {step.get('url')}")
+                print(f"  HTTP: {step.get('status_code', '?')}")
+                print(f"  URL resposta: {step.get('response_url', '?')}")
+                print(f"  HTML: {step.get('content_length', 0)} bytes")
+                if step.get('location'):
+                    print(f"  HTTP LOCATION: {step['location']}")
+                for meta in step.get('meta_refresh', []):
+                    print(f"  META REFRESH: {meta}")
+                for url in step.get('known_destination_urls', []):
+                    print(f"  DESTINO CONHECIDO: {url}")
+                if step.get('cloudflare_challenge'):
+                    print("  Cloudflare: SIM")
         with open('filecrypt_trace.json', 'w', encoding='utf-8') as f:
             json.dump(trace, f, indent=2, ensure_ascii=False)
 
